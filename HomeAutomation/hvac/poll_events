@@ -1,0 +1,40 @@
+#!/bin/bash
+# script that loops forever, calling the furnevt.cgi on HTTP on the modtronix board.
+# The stream received is piped to the procEventLog program which puts
+# a tab-delimited list of events on its stdout
+# When we recover events from the modtronix board, we send it a command to erase
+# the ones we read.
+#
+if [ $# -lt 2 ]
+then
+   echo "poll_events requires two file names" 1>&2
+   exit -1
+fi
+COUNTER=0
+while [ $COUNTER -lt 1 ]; do
+CGICONTENTS=$(curl --max-time 30 --silent $FURNACE_LOGIN http://$FURNACE_IP/furnevt.cgi)
+CURLRES=$? 
+if [ $CURLRES -eq 0 ]
+then
+  EVENTS_TO_DEL=$(echo "$CGICONTENTS" | ./procEventLog $1 $2)
+  PROCEVENTRES=$?
+  if [ $PROCEVENTRES -eq 0 ]
+  then
+#   send command to modtronix board that erases the number of events we processed
+#   return from procEvents is Z events in lowest 5 bits, Y events in next 5 bits
+      let "z = $EVENTS_TO_DEL % 32"
+      let "y = $EVENTS_TO_DEL / 32"
+      zarg="lZ=$z"
+      yarg="lY=$y"
+#      echo "curl command arg: /nothing/?$zarg&$yarg" 1>&2
+      curl --max-time 30 --silent $FURNACE_LOGIN http://$FURNACE_IP/nothing/?$zarg\&$yarg > /dev/null
+  elif [ $PROCEVENTRES -lt 0 ]
+  then
+      echo "procEventLog returned $PROCEVENTRES" 1>&2
+  fi
+  sleep 30m # polling interval.
+else
+      echo "curl furnevt.cgi failed $CURLRES" 1>&2
+      sleep 1m
+fi
+done

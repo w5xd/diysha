@@ -1,0 +1,62 @@
+#!/usr/local/bin/perl
+#Copyright (c) 2013 by Wayne Wright, Round Rock, Texas.
+#See license at http://github.com/w5xd/diysha/blob/master/LICENSE.md
+use Image::Magick;
+use strict;
+
+my $DEBUG = 0;
+
+sub overWriteDimmer {
+    my $image      = shift;
+    my $DimmerPosX = shift;
+    my $DimmerPosY = shift;
+    my $color      = shift;
+    my $posArg =
+        ( $DimmerPosX - 4 ) . ","
+      . ( $DimmerPosY - 3 ) . " "
+      . ( $DimmerPosX + 6 ) . ","
+      . ( $DimmerPosY + 7 );
+    if ($DEBUG) {
+        print STDERR "overWriteDimmer: DimmerPosX:"
+          . $DimmerPosX
+          . " DimmerPosY:"
+          . $DimmerPosY
+          . " color:"
+          . $color
+          . " posArg:\""
+          . $posArg . "\"\n";
+    }
+    $image->Draw( fill => $color, primitive => 'circle', points => $posArg );
+}
+
+my $image     = Image::Magick->new;
+my $fname     = $ENV{HTTPD_LOCAL_ROOT} . "/htdocs/house.gif";
+my $numImages = $image->Read($fname);
+
+#command line arguments are in triplets: posX posY color
+my $xpos;
+while ( $xpos = shift, defined($xpos) ) {
+    my $ypos = shift;
+    my $val  = shift;
+    if ( defined($val) && defined($ypos) ) {
+        if ($DEBUG) {
+            print STDERR "val="
+              . $val
+              . " POSITIONS="
+              . $xpos . ", "
+              . $ypos . "\n";
+        }
+        overWriteDimmer( $image, $xpos, $ypos, $val );    #parking space
+    }
+}
+binmode STDOUT;
+my $numImgW = $image->Write('gif:-');
+if ($DEBUG) {
+    print STDERR "fname= "
+      . $fname
+      . " numImages="
+      . $numImages
+      . " numImgW="
+      . $numImgW . "\n";
+}
+exit 0;

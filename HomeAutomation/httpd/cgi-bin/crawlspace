@@ -1,0 +1,27 @@
+#!/bin/sh
+#Copyright (c) 2013 by Wayne Wright, Round Rock, Texas.
+#See license at http://github.com/w5xd/diysha/blob/master/LICENSE.md 
+
+# To permit this cgi, replace # on the first line above with the
+# appropriate #!/path/to/sh shebang, and set this script executable
+# with chmod 755.
+#
+# Note that it is subject to cross site scripting attacks on MS IE
+# and any other browser which fails to honor RFC2616, so never use
+# it in a live server environment, it is provided only for testing.
+
+# disable filename globbing
+set -f
+title="Crawlspace relay log"
+echo "Content-type: text/html; charset=iso-8859-1"
+#echo "Content-type: text/plain;"
+echo
+echo "<html><head><title>${title}</title></head>"
+echo "<body bgcolor='black'>"
+#lookup the search string
+str=`../../lookupCfg.pl ../../HouseConfiguration.ini INSTEON_LOG_SEARCH S1`
+tail -n 1500 ../htdocs/insteon/logfile.txt \
+  | grep --color=always -B 2 -A 1 -e "${str}" \
+  | /usr/local/bin/ansi2html -f 
+echo 
+echo "</body></html>"

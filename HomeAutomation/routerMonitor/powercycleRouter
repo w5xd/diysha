@@ -1,0 +1,7 @@
+#!/bin/bash
+#controls product at http://sigma-shop.com/product/67/usb-relay-controller-one-channel-pcb.html
+#
+TTY="/dev/usb-ports/6-1:1.0" #This is where it plugged in today
+echo -e '\xFF\x01\x01' > $TTY
+sleep 1s
+echo -e '\xFF\x01\x00' > $TTY

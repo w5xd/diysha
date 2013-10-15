@@ -1,0 +1,3 @@
+[submodule "HomeAutomation/w5xdInsteon"]
+	path = HomeAutomation/w5xdInsteon
+	url = git://github.com/w5xd/plm.git

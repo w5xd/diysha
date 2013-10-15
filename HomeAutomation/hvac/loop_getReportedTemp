@@ -1,0 +1,16 @@
+#!/bin/bash
+#the url for the local weather observation temperature is the required first arg
+# Normally this script is used only for tested because poll_furnce gets weather_gov
+# and combines it for use in setting the eheat flag for the furnace
+
+if [ $# -lt 1 ]
+then
+	echo "loop_getReportedTemp requires a URL for local weather" 1>&2
+	exit 2
+fi
+
+COUNTER=0
+while [ $COUNTER -lt 1 ]; do
+   ./getReportedTemp $1
+   sleep 10m 
+done

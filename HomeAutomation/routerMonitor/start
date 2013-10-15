@@ -1,0 +1,38 @@
+#!/usr/local/bin/perl
+#add this to system startup using
+# sudo crontab -e
+#  Then add @reboot sudo -u <user> <path/to/this/script>
+#  and you might want to start apache from crontab as well,
+#  although its more traditional to start apache from update-rc.d
+use strict;
+use warnings;
+
+use File::Basename;
+use File::Spec;
+
+# setup software install location
+my ($fn, $DIR) = fileparse($0);  #base file specs on location of this script
+	($fn, $DIR) = fileparse(substr($DIR,0,-1));
+        $DIR = substr($DIR, 0, -1); 
+        $DIR = File::Spec->rel2abs($DIR);
+
+	require $DIR . '/define_local.pm';
+
+	# setup hardware configuration dependencies
+	define_local::SetEnvironmentVariables( $DIR . '/HouseConfiguration.ini');
+
+	if (-e "$DIR/../motion") { #motion directory does not appear on Windows...
+		chdir "$DIR/../motion";
+		system('motion -c motion.conf >motion.log 2>&1 &');
+	}
+	
+	chdir "$DIR/routerMonitor";
+	system ('bash monitor >>monitor.log 2>&1  &');
+
+	chdir "$DIR/thermostat";
+	system ('bash monitorThermostat >monitorThermostat.log 2>&1 &');
+
+#	chdir  "$DIR/hvac";
+#	system ('bash -c ./monitor');
+
+

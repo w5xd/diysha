@@ -1,0 +1,29 @@
+#!/bin/bash
+let CURLOG=1
+while [ $CURLOG -gt 0 ]; do
+    sleep 1h
+    date
+    if ping -c 1 -w 1 google.com > /dev/null
+    then
+       let CURLOG=0
+       echo "google.com OK"
+    else
+       if ping -c 1 -w 1 github.com > /dev/null
+       then
+       let CURLOG=0 
+       echo "github.com OK"
+       else
+           echo "Both google.com and github.com no ping " $CURLOG
+           if [ $CURLOG -eq 1 ]
+           then
+              echo "Router not pinging. Rebooting router"
+              ./rebootRouter > /dev/null
+           else
+              echo "Still no good. power cycle router"
+	      ./powercycleRouter
+              let CURLOG=0
+           fi
+       fi
+    fi
+    let CURLOG=CURLOG+1
+done

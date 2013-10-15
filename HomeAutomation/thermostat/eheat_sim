@@ -1,0 +1,20 @@
+#!/bin/bash
+let CURLOG=1
+while [ $CURLOG -gt 0 ]; do
+   date
+   curl --silent --max-time 60 http://$THERMOSTAT_IP/tstat | grep "\"tstate\":1"
+   if [ $? -eq 0 ] ; then
+        curl --silent --max-time 60 -d '{"tmode":1,"t_heat":59}' http://$THERMOSTAT_IP/tstat
+        echo "Set heat to 59"
+        sleep 2m
+        curl --silent --max-time 60 -d '{"tmode":1,"t_heat":56}' http://$THERMOSTAT_IP/tstat
+        echo "Set heat to 56"
+        sleep 30s
+        curl --silent --max-time 60 -d '{"tmode":1,"t_heat":56}' http://$THERMOSTAT_IP/tstat
+        echo "Set heat to 56 again"
+        sleep 60s
+        curl http://$THERMOSTAT_IP/tstat
+   fi
+   sleep 21m
+   let CURLOG=CURLOG+1
+done

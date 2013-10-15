@@ -1,0 +1,8 @@
+#!/bin/bash
+#Copyright (c) 2013 by Wayne Wright, Round Rock, Texas.
+#See license at http://github.com/w5xd/diysha/blob/master/LICENSE.md 
+echo "Content-type: text/plain"
+echo
+df -h
+echo 
+du -h /home/wayne/Documents/motion

@@ -1,0 +1,2 @@
+#!/bin/sh
+7z a ../thermostat.7z logs* logS*

@@ -1,0 +1,7 @@
+#!/bin/bash
+#Copyright (c) 2013 by Wayne Wright, Round Rock, Texas.
+#See license at http://github.com/w5xd/diysha/blob/master/LICENSE.md 
+echo "Content-type: image/jpeg"
+echo
+cd $CONTEXT_DOCUMENT_ROOT
+curl --silent --max-time 30 http://localhost:8081 | ../../readMotion/readMotion

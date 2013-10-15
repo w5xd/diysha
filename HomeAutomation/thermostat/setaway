@@ -1,0 +1,4 @@
+#!/bin/bash
+curl -d @away_cool.json http://$THERMOSTAT_IP/tstat/program/cool
+curl -d @away_heat.json http://$THERMOSTAT_IP/tstat/program/heat
+

@@ -1,0 +1,27 @@
+#!/bin/bash
+LOGFILEOUT="thermostat_log.txt"
+./processEventLog . $LOGFILEOUT
+SUBDIR=`date +"%Y_%m_%d_%H%M%S"`
+SUBDIR="logs_"$SUBDIR
+mkdir $SUBDIR
+let CURLOG=1
+while [ $CURLOG -gt 0 ]; do
+    LOGPATH=$SUBDIR/log$CURLOG
+    curl --max-time 60 http://$THERMOSTAT_IP/tstat/eventlog > $LOGPATH
+    ./processEventLog -a $LOGPATH $LOGFILEOUT
+    RES=$?
+#    if [ $RES -ge 45 ] && [ $RES -le 90 ] ; then
+#        if [ $RES -ge 58 ] ; then
+#            curl -d '{"tmode":1,"t_heat":57}' http://$THERMOSTAT_IP/tstat
+#            echo "Lowering setting to 57"
+#        elif [ $RES -le 56 ] ; then
+#            curl -d '{"tmode":1,"t_heat":59}' http://$THERMOSTAT_IP/tstat
+#            echo "Raising setting to 58"
+#            sleep 60s
+#            curl -d '{"tmode":1,"t_heat":57}' http://$THERMOSTAT_IP/tstat
+#            echo "Lowering setting to 57"
+#       fi
+#    fi
+    sleep 30m
+    let CURLOG=CURLOG+1
+done

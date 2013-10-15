@@ -1,0 +1,78 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Frameset//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd">
+<html>
+<head>
+<title>Schedule on and off</title>
+<script type="text/javascript">
+<!--
+// copyright 1999 Idocs, Inc. http://www.idocs.com
+// Distribute this script freely but keep this notice in place
+function numbersonly(myfield, e, hex)
+{
+var key;
+var keychar;
+
+if (window.event)
+   key = window.event.keyCode;
+else if (e)
+   key = e.which;
+else
+   return true;
+keychar = String.fromCharCode(key);
+
+// control keys
+if ((key==null) || (key==0) || (key==8) || 
+    (key==9) || (key==13) || (key==27) )
+   return true;
+
+// numbers
+else if ((("0123456789").indexOf(keychar) > -1))
+    return true;
+else
+   return false;
+}
+//-->
+</script>    
+</head>
+<body>
+    <form action="HomeAutomation/scheduleOnOff" method="post">
+    <table border="1">
+        <tr>
+            <th>Outside
+            </th>
+            <th>Inside
+            </th>
+            <th>Relay</th>
+            <th>Heatpump Min(F)</th>
+        </tr>
+        <tr>
+            <td>
+                <select name="OutsideSchedule" size='1' >
+               <option></option>
+               <option value='1'>On</option>
+	       <option value='0'>Off</option> 
+                </select>
+            </td>
+            <td>
+                <select name="InsideSchedule" size='1' >
+               <option></option>
+               <option value='1'>On</option>
+	       <option value='0'>Off</option> 
+                </select>
+            </td>
+           <td>
+                <select name="RelaySchedule" size='1'  >
+               <option></option>
+               <option value='1'>On</option>
+	       <option value='0'>Off</option> 
+                </select>
+           </td>
+           <td><input name="HeatPump" size='2' maxLength='2' onkeypress="return numbersonly(this, event, 0)" /></td>
+            <td>
+                <input type="submit" name="Update" value="Update" />
+            </td>
+        </tr>
+    </table>
+ </form>
+</body>
+</html>
+

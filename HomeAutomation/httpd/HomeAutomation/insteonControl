@@ -1,0 +1,127 @@
+#!/usr/local/bin/perl
+#Copyright (c) 2013 by Wayne Wright, Round Rock, Texas.
+#See license at http://github.com/w5xd/diysha/blob/master/LICENSE.md 
+# cgi script that process POST command to control Insteon devices
+# via  http
+
+use strict;
+require PowerLineModule::Modem;
+use AppConfig;
+
+#parameter
+my $DEBUG = 0;
+
+my $config = AppConfig->new(
+    {
+        CREATE => 1,
+        CASE   => 1,
+        GLOBAL => {
+            ARGCOUNT => AppConfig::ARGCOUNT_ONE,
+        },
+    }
+);
+my $cfgFileName = $ENV{HTTPD_LOCAL_ROOT}."/../HouseConfiguration.ini";
+$config->file($cfgFileName);
+
+my $ModemDevice = $config->get("INSTEON_Modem");
+
+#We're a CGI script.
+#We take arguments. Either as HTTP POST or GET. Find them...
+my $buffer;
+my @pairs;
+my $pair;
+my $name;
+my $value;
+my %FORM;
+
+# Read in text
+$ENV{'REQUEST_METHOD'} =~ tr/a-z/A-Z/;
+if ( $ENV{'REQUEST_METHOD'} eq "POST" ) {
+    read( STDIN, $buffer, $ENV{'CONTENT_LENGTH'} );
+}
+else {
+    $buffer = $ENV{'QUERY_STRING'};
+}
+
+# Split information into name/value pairs
+@pairs = split( /&/, $buffer );
+foreach $pair (@pairs) {
+    ( $name, $value ) = split( /=/, $pair );
+    $value =~ tr/+/ /;
+    $value =~ s/%(..)/pack("C", hex($1))/eg;
+    $FORM{$name} = $value;
+}
+
+# required http header cuz we're CGI
+sub StartHtml() {
+    print STDOUT <<FirstSectionDone;
+Content-type: text/html
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>Dimmer Control Results</title>
+</head>
+<body>
+FirstSectionDone
+}
+
+&StartHtml;
+
+if ($DEBUG) {
+    print "FORM: <br/> \n";
+    while ( my ( $key, $value ) = each(%FORM) ) {
+        print "$key => $value<br/>\n";
+    }
+}
+
+my $Modem = PowerLineModule::Modem->new( $ModemDevice, 0, "" );
+
+if ( $Modem->openOk() == 0 ) {
+    print STDOUT "Oops, no modem device\n";
+}
+else {
+    if (   defined( $FORM{Update} )
+        && ( $FORM{Update} eq "Update" )
+        && defined( $FORM{DimmerInsteonId} )
+        && defined( $FORM{DimmerValue} ) )
+    {
+        my $id           = $FORM{DimmerInsteonId};
+        my $new_val      = $FORM{DimmerValue};
+        my $DimmerHandle = $Modem->getDimmer( $id );
+        if ( $DimmerHandle != 0 ) {
+            if ( $new_val ne "" ) {
+                my $res;
+                if ( ( $new_val == -1 ) || ( $new_val == 256 ) ) {
+                    $res = $DimmerHandle->setFast( $new_val );
+                }
+                else {
+                    $res = $DimmerHandle->setValue( $new_val );
+                }
+                print STDOUT "Set dimmer "
+                  . $id . " to "
+                  . $new_val
+                  . " with result "
+                  . $res
+                  . "<br/>\n";
+            }
+            else {
+                $new_val = $DimmerHandle->getValue( 0 );
+                print STDOUT "Got dimmer value "
+                  . $new_val
+                  . " for dimmer id "
+                  . $id
+                  . "<br/>\n";
+            }
+        }
+        else {
+            print STDOUT "Oops no dimmer handle<br/>\n";
+        }
+    }
+}
+
+print STDOUT <<Form_print_done6;
+</body>
+</html>
+Form_print_done6
+

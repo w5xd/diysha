@@ -1,0 +1,2 @@
+#!/bin/bash
+curl --silent --max-time 30 --user admin:1mockPhot --data "getpage=../html/general_status.html&connection0:pppoe:command/stop=" http://$ROUTER_IP/cgi-bin/webcm

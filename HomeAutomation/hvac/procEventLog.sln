@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "procEventLog", "procEventLog.vcproj", "{EDF71A18-9B07-471D-927D-D3F71D2A18C3}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "procFurnace", "procFurnace.vcproj", "{2E7FE149-BEC2-4E4A-AD2E-66F4B8D14D92}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "procWeatherGov", "procWeatherGov.vcproj", "{F6A69390-207D-468C-8F9B-6DDA2F89A824}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EDF71A18-9B07-471D-927D-D3F71D2A18C3}.Debug|Win32.ActiveCfg = Debug|Win32
+		{EDF71A18-9B07-471D-927D-D3F71D2A18C3}.Debug|Win32.Build.0 = Debug|Win32
+		{EDF71A18-9B07-471D-927D-D3F71D2A18C3}.Release|Win32.ActiveCfg = Release|Win32
+		{EDF71A18-9B07-471D-927D-D3F71D2A18C3}.Release|Win32.Build.0 = Release|Win32
+		{2E7FE149-BEC2-4E4A-AD2E-66F4B8D14D92}.Debug|Win32.ActiveCfg = Debug|Win32
+		{2E7FE149-BEC2-4E4A-AD2E-66F4B8D14D92}.Debug|Win32.Build.0 = Debug|Win32
+		{2E7FE149-BEC2-4E4A-AD2E-66F4B8D14D92}.Release|Win32.ActiveCfg = Release|Win32
+		{2E7FE149-BEC2-4E4A-AD2E-66F4B8D14D92}.Release|Win32.Build.0 = Release|Win32
+		{F6A69390-207D-468C-8F9B-6DDA2F89A824}.Debug|Win32.ActiveCfg = Debug|Win32
+		{F6A69390-207D-468C-8F9B-6DDA2F89A824}.Debug|Win32.Build.0 = Debug|Win32
+		{F6A69390-207D-468C-8F9B-6DDA2F89A824}.Release|Win32.ActiveCfg = Release|Win32
+		{F6A69390-207D-468C-8F9B-6DDA2F89A824}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

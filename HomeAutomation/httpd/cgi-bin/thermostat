@@ -1,0 +1,315 @@
+#!/usr/local/bin/perl
+#Copyright (c) 2013 by Wayne Wright, Round Rock, Texas.
+#See license at http://github.com/w5xd/diysha/blob/master/LICENSE.md 
+# cgi script that maintains HTML form to to control CP30 thermostat
+# via its http interface.
+
+# downloaded and installed
+# http://search.cpan.org/CPAN/authors/id/M/ML/MLEHMANN/common-sense-3.6.tar.gz
+# http://search.cpan.org/CPAN/authors/id/M/ML/MLEHMANN/JSON-XS-2.32.tar.gz
+use lib "../..";
+require define_local;
+use LWP::Simple;    # used to fetch the URL
+use LWP::UserAgent;
+use strict;
+use JSON::XS;       # used to parse the json from the thermostat
+
+#parameter
+my $DEBUG            = 0;
+my $MIN_TEMP_SETTING = 45;
+my $MAX_TEMP_SETTING = 95;
+
+define_local::SetEnvironmentVariables("../../HouseConfiguration.ini");
+
+my $url              = "http://".$ENV{"THERMOSTAT_IP"}."/tstat";
+
+my $FAN_ON_LABEL="Continuous";
+
+#We're a CGI script.
+#We take arguments. Either as HTTP POST or GET. Find them...
+my $buffer, my @pairs, my $pair, my $name, my $value, my %FORM ;
+
+# Read in text
+$ENV{'REQUEST_METHOD'} =~ tr/a-z/A-Z/;
+if ( $ENV{'REQUEST_METHOD'} eq "POST" ) {
+    read( STDIN, $buffer, $ENV{'CONTENT_LENGTH'} );
+}
+else {
+    $buffer = $ENV{'QUERY_STRING'};
+}
+
+# Split information into name/value pairs
+@pairs = split( /&/, $buffer );
+foreach $pair (@pairs) {
+    ( $name, $value ) = split( /=/, $pair );
+    $value =~ tr/+/ /;
+    $value =~ s/%(..)/pack("C", hex($1))/eg;
+    $FORM{$name} = $value;
+}
+
+# required http header cuz we're CGI
+print "Content-type: text/html\r\n\r\n";
+print "<!DOCTYPE html>\n<html>\n";
+print "<head>\n";
+print "<title>Thermostat Control</title>\n";
+print "</head>\n";
+print "<body>\n";
+
+if ($DEBUG) {print STDOUT "url: " . $url ."\n";}
+my $coder = JSON::XS->new->utf8->pretty->allow_nonref;
+my $ua    = LWP::UserAgent->new;
+$ua->agent("HVAC Web 1.0");
+
+#Do a sync command if it asks us too
+if ( defined( $FORM{sync} ) ) {    #user wants the clock synchronized
+    (
+        my $sec,  my $min,  my $hour, my $mday, my $mon,
+        my $year, my $wday, my $yday, my $isdst
+    ) = localtime( time + 30 - ( $DEBUG * 180 ) );    # round up to next minute
+    my %time_set =
+      ( "day" => ( $wday + 6 ) % 7, "hour" => $hour, "minute" => $min );
+    my %json_set = ( "time" => \%time_set );
+    if ($DEBUG) {
+        while ( my ( $key, $value ) = each %json_set ) {
+            print "$key=$value<br/>\n";
+        }
+    }
+    my $setString = $coder->encode( \%json_set );
+    if ($DEBUG) { print STDOUT "setString = $setString <br/><br/>\n"; }
+    else {
+        my $req = HTTP::Request->new( POST => $url );
+        $req->content_type('application/json');
+        $req->content($setString);
+        my $res = $ua->request($req);
+        if ( !$res->is_success ) {
+            print STDOUT "Failed to send time update to thermostat<br/>";
+        }
+    }
+}
+elsif ( defined( $FORM{submit} ) )
+{    #user wants to send the thermostat a command
+    if (   defined( $FORM{thermostat_mode} )
+        && defined( $FORM{hvac_was} )
+        && defined( $FORM{temperature_setting} )
+        && defined( $FORM{fan_mode} ) )
+    {
+        my $new_mode  = $FORM{thermostat_mode};
+        my %mode_hash = ( "Cool" => 2, "Heat" => 1, "Off" => 0 );
+        my %fan_hash  = ( "Auto" => 0, $FAN_ON_LABEL => 2 );
+        if ( !defined( $mode_hash{$new_mode} ) ) {
+            print STDOUT "Bug in mode setting<br/>\n";
+        }
+        else {
+            my $new_fan_mode = $FORM{fan_mode};
+            if ( !defined( $fan_hash{$new_fan_mode} ) ) {
+                print STDOUT "Bug in fan setting<br/>\n";
+            }
+            else {
+                my $new_temperature = $FORM{temperature_setting};
+                $new_temperature += 0;    # convert to digits
+                if (   ( $new_temperature < $MIN_TEMP_SETTING )
+                    || ( $new_temperature > $MAX_TEMP_SETTING ) )
+                {
+                    print STDOUT "Bug in temperature setting<br/>\n";
+                }
+                else {
+                    if (   $mode_hash{$new_mode}
+                        && ( $FORM{hvac_was} != 0 )
+                        && ( $mode_hash{$new_mode} != $FORM{hvac_was} ) )
+                    {
+                        print STDOUT
+"<i>Must set mode to off before changing it to the other mode</i><br/>\n";
+                    }
+                    else {
+                        my $hold = 0;
+                        if (defined($FORM{bHold}) && ($FORM{bHold}=='Hold')) {
+                           $hold = 1; }
+                        my %thermostat_set = (
+                            "tmode" => $mode_hash{$new_mode},
+                            "fmode" => $fan_hash{$new_fan_mode},
+                            "hold" => $hold
+                        );
+                        if ( $new_mode eq "Heat" ) {
+                            $thermostat_set{"t_heat"} = $new_temperature;
+                        }
+                        elsif ( $new_mode eq "Cool" ) {
+                            $thermostat_set{"t_cool"} = $new_temperature;
+                        }
+                        else #tstat will leave Y wire ON if we leave hold on!
+                        { $thermostat_set{"hold"} = 0 ; }
+                        my $setString = $coder->encode( \%thermostat_set );
+                        if ($DEBUG) {
+                            print "hvac set string = $setString<br/>\n";
+                        }
+                        else {
+                            my $req = HTTP::Request->new( POST => $url );
+                            $req->content_type('application/json');
+                            $req->content($setString);
+                            my $res = $ua->request($req);
+                            if ( !$res->is_success ) {
+                                print STDOUT
+"Failed to send time update to thermostat<br/>";
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+# ********************
+# Ask the thermostat what its stat is.
+
+my $thermostat_state = get("$url");
+my $THERMOSTAT_TIME  = "";
+
+if ( defined $thermostat_state ) {
+
+    my %json = %{ $coder->decode($thermostat_state) };
+
+    if ($DEBUG) {
+        print "<p> got:".$thermostat_state."<br>\n";
+        while ( my ( $key, $value ) = each %json ) {
+            print "$key = $value <br/>\n";
+        }
+        print "<br/><br/>Form:<br/>\n";
+        while ( my ( $key, $value ) = each %FORM ) {
+            print("$key = $value <br/>\n");
+        }
+    }
+    my $MODE_OFF  = "";
+    my $MODE_HEAT = "";
+    my $MODE_COOL = "";
+
+    my $tmode = $json{"tmode"};
+    if    ( $tmode == 0 ) { $MODE_OFF  = "selected"; }
+    elsif ( $tmode == 1 ) { $MODE_HEAT = "selected"; }
+    elsif ( $tmode == 2 ) { $MODE_COOL = "selected"; }
+    my $fmode = $json{"fmode"}; 
+    my $FAN_AUTO; my $FAN_ON;
+    if   ( $fmode == 0 ) { $FAN_AUTO = "selected"; }
+    else                 { $FAN_ON   = 'selected'; }
+
+    my $temperature_setting;
+    if ( defined $json{"t_cool"} ) {
+        $temperature_setting = $json{"t_cool"};
+    }
+    elsif ( defined $json{"t_heat"} ) {
+        $temperature_setting = $json{"t_heat"};
+    }
+
+    if ( exists $json{"time"} ) {
+        my $time_stamp = $json{"time"};
+        if ($DEBUG) {
+            print "Got \"time\"<br>\n";
+            while ( my ( $key, $value ) = each %$time_stamp ) {
+                print "time_stamp: ".$key." = ".$value." <br/>\n";
+            }
+        }
+        my @dow_array = ( "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" );
+        $THERMOSTAT_TIME =
+            sprintf( "%02d", $time_stamp->{"hour"} ) . ":"
+          . sprintf( "%02d", $time_stamp->{"minute"} ) . " on ";
+        $THERMOSTAT_TIME .= $dow_array[ $time_stamp->{"day"} ];
+        if ($DEBUG) { print "THERMOSTAT_TIME=".$THERMOSTAT_TIME."\n";
+        }
+
+    }
+
+    print STDOUT <<Form_print_done1;
+<form action="" method="POST">
+<input type="hidden" name="hvac_was" value="$tmode" />
+<table border="1">
+<tr><th>Mode</th><th>Fan</th><th>Target</th>
+<th></th>
+</tr>
+<tr>
+<td align='center'>
+<select name="thermostat_mode" size=1>
+<option $MODE_OFF>Off</option>
+<option $MODE_HEAT>Heat</option>
+<option $MODE_COOL>Cool</option>
+</select>
+</td>
+<td align='center'>
+<select name="fan_mode" size=1>
+<option $FAN_AUTO>Auto</option>
+<option $FAN_ON>$FAN_ON_LABEL</option>
+</select>
+</td>
+<td align='center'>
+<select name="temperature_setting" size=1>
+Form_print_done1
+
+    for (
+        my $temperature = $MIN_TEMP_SETTING ;
+        $temperature <= $MAX_TEMP_SETTING ;
+        $temperature++
+      )
+    {
+        print STDOUT "<option";
+        if (   ( defined $temperature_setting )
+            && ( $temperature_setting == $temperature ) )
+        {
+            print STDOUT " selected";
+        }
+        print STDOUT ">$temperature</option>\n";
+    }
+    my $FAN_DISPLAY        = $json{"fstate"} ? "On" : "Off";
+    my $HVAC_DISPLAY_STATE = "Idle";
+    my $hvac_state         = $json{"tstate"};
+    if    ( $hvac_state == 1 ) { $HVAC_DISPLAY_STATE = "Heating"; }
+    elsif ( $hvac_state == 2 ) { $HVAC_DISPLAY_STATE = "Cooling"; }
+
+    print STDOUT <<Form_print_done2;
+</select>&deg;F<br/>
+Form_print_done2
+    print STDOUT '<input type="checkbox" name="bHold" value="Hold"';
+    if ($json{hold} == '1') { print STDOUT " checked "; }
+    print STDOUT '/>Hold<br/>';
+    print STDOUT <<Form_print_done3;
+</td>
+<td align="center">
+<input type="reset" name="Reset" value="Undo"/><br/>
+</td>
+</tr>
+<tr>
+<td colspan='4' align="center">
+<input type="submit" name="submit" 
+   value="Set thermostat to these settings now!"/>
+</td>
+</tr>
+<tr>
+<td colspan='4' align='center'>
+<b>Status downloaded at $THERMOSTAT_TIME</b>
+</td>
+</tr>
+<tr>
+<td align='center'>$HVAC_DISPLAY_STATE</td>
+<td align='center'>$FAN_DISPLAY</td>
+<td align='center'>$json{"temp"}&deg;F</td>
+<td>
+<input type="submit" name="refresh" value="Refresh" />
+</td>
+</tr>
+</table>
+</form>
+
+<form action="" 
+ onsubmit="return confirm('Will set the thermostat clock to now. OK?');" 
+ method="POST">
+<p align="center">
+<input type="submit" name="sync" value="Synchronize thermostat clock" />
+</p>
+</form>
+<center><font size=+1><b>Thermostat Control</b></font></center>
+Form_print_done3
+}
+else {
+    print "<h1>Oops. Failed to talk to thermostat.</h1>\n";
+}
+
+print "</body>\n";
+print "</html>\n";
+

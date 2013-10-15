@@ -1,0 +1,120 @@
+#!/bin/bash
+#
+# Wayne Wright, Round Rock, Tx
+# See the LICENSE:
+#      https://github.com/w5xd/diysha/blob/master/LICENSE.md
+#
+#This script downloads and installs those software packages missing
+#from the http://www.turnkeylinux.org/core Linux image
+#and needed to build the Home Automation package
+#     https://github.com/w5xd/diysha
+#
+UNAME_R=`uname -r`
+UNAME_R_SUPPORTED='2.6.32-5-686'
+UNAME_R_SUPPORTE2='2.6.32-5-amd64'
+if [ $UNAME_R != $UNAME_R_SUPPORTED ] && \
+   [ $UNAME_R != $UNAME_R_SUPPORTE2 ]
+   then # Download and install a very specific set of prerequisites
+        # that only are known to work for a very specific Linux install.
+   echo "This script only supports Linux versions:"
+   echo "    $UNAME_R_SUPPORTED"
+   echo "    $UNAME_R_SUPPORTE2"
+   exit 1
+fi
+
+if [[ $EUID -ne 0 ]]; then
+   echo "This script must be run as root"
+   exit 1
+fi
+
+if [[ 1 -eq 1 ]]
+   then
+   echo "**** HomeAutomation updating previously installed packages with apt-get"
+   apt-get update
+   apt-get --assume-yes upgrade 
+fi
+
+echo "**** HomeAutomation installing needed apps not in turnkeylinux core"
+# apt-get is the tool used in debian linux distributions. your mileage may vary.
+apt-get --assume-yes install \
+         curl gnuplot-x11 apache2-mpm-worker libapache2-mod-perl2 libyaml-perl \
+         make g++ bzip2 p7zip libexpat1-dev pkg-config git openssl \
+         imagemagick perlmagick
+
+echo "**** HomeAutomation installing postfix. can send email with it"
+# DEBIAN_FRONTEND=noninteractive is so install won't up up a dialog and fail
+DEBIAN_FRONTEND=noninteractive apt-get install -y postfix 
+postfix stop
+
+apachectl -k stop #apache got started by installing it. stop it now
+update-rc.d apache2 disable #don't start apache2 on reboot
+        
+perl -MCPAN -e 'install CPAN' #first make sure CPAN is up to date
+
+echo "**** HomeAutomation required perl modules not installed in turnkeylinux core"
+perl -MCPAN -e shell <<endOfCPANcommands
+o conf prerequisites_policy follow
+install JSON::XS
+install LWP::Simple
+install IO::String
+install HTML::FromANSI
+install XML::Parser
+install AppConfig
+endOfCPANcommands
+
+echo "**** HomeAutomation downloading boost"
+# the version of boost available via apt-get at this writing is far too old to
+# use for the Home Automation codes.
+curl -L -O https://downloads.sourceforge.net/project/boost/boost/1.52.0/boost_1_52_0.tar.bz2
+tar jxf boost_1_52_0.tar.bz2
+pushd boost_1_52_0
+echo "**** HomeAutomation building needed parts of boost"
+#The --with-libraries= speeds up the compile a lot, but omits lots of boost libraries.
+#Only those used by https://github.com/w5xd/diysha are built here.
+./bootstrap.sh --prefix=/usr --with-libraries=thread,date_time,filesystem,system
+./b2
+./b2 install
+popd
+
+echo "**** HomeAutomation downloading libusb"
+curl -L -O https://sourceforge.net/projects/libusb/files/libusb-1.0/libusb-1.0.9/libusb-1.0.9.tar.bz2
+echo "**** HomeAutomation downloading libusb-compat"
+curl -L -O https://sourceforge.net/projects/libusb/files/libusb-compat-0.1/libusb-compat-0.1.4/libusb-compat-0.1.4.tar.bz2
+
+echo "**** HomeAutomation building libusb"
+tar jxf libusb-1.0.9.tar.bz2
+pushd libusb-1.0.9
+./configure --prefix=/usr; make; make install
+popd
+
+tar jxf libusb-compat-0.1.4.tar.bz2
+pushd libusb-compat-0.1.4
+./configure --prefix=/usr; make; make install
+popd
+
+echo "**** HomeAutomation make the apache2 web server user able to access the insteon PLM device"
+#Why the www-data user? Because that is the user that turnkeylinux uses to run the apache web server
+adduser www-data dialout
+
+echo "**** HomeAutomation. Update postfix to 2.9.7 because turnkeylinux one won't work with some ISPs"
+#annoying that the turnkeylinux version of postfix won't work with my isp.
+#
+apt-get install -y libdb-dev cyrus-dev-2.2
+curl -L -O ftp://mirrors.loonybin.net/pub/postfix/official/postfix-2.9.7.tar.gz
+tar zxf postfix-2.9.7.tar.gz
+pushd postfix-2.9.7
+make tidy # if you have left-over files from a previous build
+make makefiles CCARGS="-DUSE_SASL_AUTH -DUSE_CYRUS_SASL -I/usr/include/sasl" AUXLIBS="-L/usr/lib -lsasl2"
+make
+make upgrade
+chown -R root /etc/postfix
+popd
+
+#download the source code for diysha
+git clone --recursive git://github.com/w5xd/diysha.git diysha -b master
+
+echo "**** rebooting the appliance."
+shutdown -r now
+#The reboot signals the user that we're done, and it also restarts webmin
+
+

@@ -1,0 +1,1 @@
+turnkeylinux supports a pre-built apache2 install coming from apache2-mpm-worker. That install comes with a /etc/apache2 configuration that needs some modification to work for the do-it-yourself secure home automation product. Here is a complete copy of the /etc/apache2 files. Some have been changed from the originals, some have not.

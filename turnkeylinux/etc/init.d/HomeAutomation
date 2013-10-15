@@ -1,0 +1,22 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides: HomeAutomation
+# Required-Start: $network
+# Required-Stop: $network
+# Default-Start: 2 3 5
+# Default-Stop:
+# Description: Make initial request of Home Automation webserver
+### END INIT INFO
+
+case "$1" in
+'start')
+        su www-data -c /var/HomeAutomation/ReadStartPage& >/dev/null 2>&1
+        su www-data -c /var/HomeAutomation/routerMonitor/start
+        ;;
+'stop')
+        ;;
+*)
+        echo "Usage: $0 { start | stop }"
+        ;;
+esac
+exit 0
