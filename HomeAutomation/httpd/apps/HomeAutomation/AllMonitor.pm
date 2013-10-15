@@ -16,6 +16,7 @@ our @ISA = qw(HomeAutomation::InsteonMonitor);
 sub new { #argument--heartbeat timer
 	my ($class) = @_;
 	my $self = $class->SUPER::new($_[1], $_[2]);
+	$self->{_lastEmailTime} = 0;
 	bless ($self, $class);
 	return $self;
 }
@@ -38,8 +39,10 @@ sub onEvent {
 	my $ls1 = shift;
 	my $ls2 = shift;
 	my $ls3 = shift;
+	# FIXME  Throttle the sendmail. 
         $self->SUPER::onEvent($dimmer, $group, $cmd1, $cmd2, $ls1, $ls2, $ls3);
         $self->_sendEventEmail($dimmer);
+	$self->_lastEmailTime = time;
 }
 
 1;
