@@ -28,8 +28,7 @@ sub new {
     $self->{_email}         = $email;
     $self->{_notified}      = 0;
     $self->{_actual}        = 0;
-    my @arr = ();
-    $self->{_stackedMessages} = \@arr;
+    $self->{_stackedMessages} = []; #anonymous array ref
     bless( $self, $class );
     return $self;
 }
@@ -39,23 +38,25 @@ sub _stackMessage {
     my $dimmer = shift;
     my $tstr = localtime( $self->{_lastHeartbeat} );
     my $lbl  = $dimmer->name();
-    push (@{$self->{_stackedMessages}},
+    my $msgStack = $self->{_stackedMessages}; 
+    push (@{$msgStack},
 	    "The device $lbl was activated at $tstr.");
-    push (@{$self->{_stackedMessages}},
+    push (@{$msgStack},
 	    "    The event was on group " . $self->{_group});
-    push (@{$self->{_stackedMessages}},
+    push (@{$msgStack},
             "    And was cmd1 = " . $self->{_cmd1});
     }
 
 sub _clearMessageStack {
     my $self = shift;
-    $self->{_stackedMessages} = ();
+    $self->{_stackedMessages} = [];
 }
 
 sub _isMessageStackEmpty {
     my $self = shift;
-    if (!defined ($self->{_stackedMessages}) ||
-		    scalar(@{$self->{_stackedMessages} }) == 0) 
+    my $msgStack = $self->{_stackedMessages};
+    if (!defined ($msgStack) ||
+		    scalar(@$msgStack) == 0) 
 	    { return 1; }
     return 0;
 }
