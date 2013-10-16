@@ -10,6 +10,7 @@ use HomeAutomation::InsteonMonitor;
 use strict;
 
 my $DEBUG = 0;
+my $MIN_EMAIL_SECONDS = 60 * 5;
 
 our @ISA = qw(HomeAutomation::InsteonMonitor);
 
@@ -28,6 +29,14 @@ sub onTimer {
         {
             #heartbeat expired
 	}
+	if (!$self->_isMessageStackEmpty()) {
+		my $now = time;
+		if ($now - $self->{_lastEmailTime} > $MIN_EMAIL_SECONDS) {
+			$self->_sendEventEmail($dimmer);
+			$self->_clearMessageStack();
+			$self->{_lastEmailTime} = $now;
+		}
+	}
 }
 
 sub onEvent {
@@ -41,8 +50,13 @@ sub onEvent {
 	my $ls3 = shift;
 	# FIXME  Throttle the sendmail. 
         $self->SUPER::onEvent($dimmer, $group, $cmd1, $cmd2, $ls1, $ls2, $ls3);
-        $self->_sendEventEmail($dimmer);
-	$self->_lastEmailTime = time;
+	$self->_stackMessage($dimmer);
+	my $now = time;
+	if ($now - $self->{_lastEmailTime} > $MIN_EMAIL_SECONDS ) {
+        	$self->_sendEventEmail($dimmer);
+        	$self->_clearMessageStack(); 
+		$self->{_lastEmailTime} = $now;
+	}
 }
 
 1;

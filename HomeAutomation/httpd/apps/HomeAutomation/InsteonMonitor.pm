@@ -28,29 +28,54 @@ sub new {
     $self->{_email}         = $email;
     $self->{_notified}      = 0;
     $self->{_actual}        = 0;
+    my @arr = ();
+    $self->{_stackedMessages} = \@arr;
     bless( $self, $class );
     return $self;
+}
+
+sub _stackMessage {
+    my $self = shift;
+    my $dimmer = shift;
+    my $tstr = localtime( $self->{_lastHeartbeat} );
+    my $lbl  = $dimmer->name();
+    push (@{$self->{_stackedMessages}},
+	    "The device $lbl was activated at $tstr.");
+    push (@{$self->{_stackedMessages}},
+	    "    The event was on group " . $self->{_group});
+    push (@{$self->{_stackedMessages}},
+            "    And was cmd1 = " . $self->{_cmd1});
+    }
+
+sub _clearMessageStack {
+    my $self = shift;
+    $self->{_stackedMessages} = ();
+}
+
+sub _isMessageStackEmpty {
+    my $self = shift;
+    if (!defined ($self->{_stackedMessages}) ||
+		    scalar(@{$self->{_stackedMessages} }) == 0) 
+	    { return 1; }
+    return 0;
 }
 
 # utility function for subclasses to send an email
 sub _sendEventEmail {
     my $self   = shift;
     my $dimmer = shift;
+    my $lbl  = $dimmer->name();
     my $email  = $self->{_email};
     if ( defined($email) ) {
         my $stdOut;
         my $stdIn;
         my $pid  = open2( $stdOut, $stdIn, "sendmail -f diysha $email" );
-        my $tstr = localtime( $self->{_lastHeartbeat} );
-        my $lbl  = $dimmer->name();
         binmode $stdIn;
         print $stdIn "To: " . $email . "\r\n";
         print $stdIn "Subject: Notification regarding $lbl.\r\n";
         print $stdIn "\r\n";
-
-        print $stdIn "The device $lbl was activated at $tstr.\r\n";
-        print $stdIn "The event was on group " . $self->{_group} . "\r\n";
-        print $stdIn "And was cmd1 = " . $self->{_cmd1} . "\r\n";
+	foreach my $line (@{$self->{_stackedMessages}}) {
+	       	print $stdIn $line."\r\n";	}
         close $stdIn;
         my $buf;
         while ( read( $stdOut, $buf, 128 ) ) {
@@ -63,10 +88,10 @@ sub _sendEventEmail {
 sub onEvent {
     my $self = shift;
     unshift @_, time;
-    $self->recordEvent(@_);
+    my $flag =  $self->recordEvent(@_);
     # append to a log file, if there is one named
     my $logFileName = $self->{_logFileName};
-    if (defined($logFileName)) {
+    if ($flag && defined($logFileName)) {
         if (open FH, ">>$logFileName") {
             print FH $self->{_fileKey} . "\t" . 
                 $self->{_lastHeartbeat} . "\t" . 
@@ -84,11 +109,16 @@ sub recordEvent {
     }
     my $self = shift;
     my $time = shift;
+    my $ret = 1;
+    if (($self->{_lastHeartbeat} == $time) &&
+	($self->{_group} == $_[1]) &&
+	($self->{_cmd1} == $_[2])) { $ret = 0; }
     $self->{_lastHeartbeat} = $time;
     $self->{_notified}      = 0;
     $self->{_actual}        = 1;
     $self->{_group}         = $_[1];
     $self->{_cmd1}          = $_[2];
+    return $ret;
 }
 
 sub onTimer {

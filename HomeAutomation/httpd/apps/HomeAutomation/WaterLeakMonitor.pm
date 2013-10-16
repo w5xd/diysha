@@ -41,7 +41,11 @@ sub onEvent {
 	my $ls3 = shift;
         $self->SUPER::onEvent($dimmer, $group, $cmd1, $cmd2, $ls1, $ls2, $ls3);
 
-        if (($group == 1) && ($cmd1 == 17)) { $self->_sendEventEmail($dimmer); }
+        if (($group == 1) && ($cmd1 == 17)) { 
+		$self->_stackMessage($dimmer);
+        	$self->_sendEventEmail($dimmer);
+        	$self->_clearMessageStack(); 
+	}
 }
 
 1;
