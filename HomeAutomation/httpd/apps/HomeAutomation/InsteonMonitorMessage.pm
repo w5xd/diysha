@@ -6,6 +6,8 @@ use strict;
 
 my $DEBUG = 0;
 
+my $MAX_MESSAGES = 9;
+
 sub new {
     if ($DEBUG) { print STDERR "new InsteonMonitor\n"; }
     my $proto     = shift;
@@ -32,7 +34,7 @@ sub onEvent {
             push( @{$self->{_prevCmd1}},      $self->{_cmd1} );
 
             # limit size of prior array
-            while ( @{ $self->{_prevHeartbeat} } > 9 ) {
+            while ( @{ $self->{_prevHeartbeat} } > $MAX_MESSAGES ) {
                 shift @{$self->{_prevHeartbeat}};
                 shift @{$self->{_prevGroup}};
                 shift @{$self->{_prevCmd1}};
