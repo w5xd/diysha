@@ -24,11 +24,13 @@ use Switch;
 my $DEBUG = 0;
 
 sub printDimmerLinks {
-    if ($DEBUG) { print STDERR "printDimmerLinks:" . @_ . "\n"; }
+    my $Modem = shift;
+    if ($DEBUG) { print STDERR "PrintDimmerLinks:" . @_ . "\n"; }
     foreach (@_) {
         $_->startGatherLinkTable();
         $_->getNumberOfLinks();
-        print STDERR $_->printLinkTable();
+        $Modem->printLogString( $_->name()."\n");
+        $Modem->printLogString( $_->printLinkTable() );
     }
     1;
 }
@@ -88,6 +90,7 @@ sub handler {
                 my $insteonClass = $allVars->{ $key . "_class" };
                 if ( !defined($insteonClass) ) { $insteonClass = "Dimmer"; }
                 my $schedule = $allVars->{ $key . "_schedule" };
+		my $acqLinkTable = $allVars->{ $key . "_acquireLinkTable" };
                 my $device;
                 switch ( uc $insteonClass ) {
                     case "DIMMER"  { $device = $Modem->getDimmer($key); }
@@ -167,6 +170,7 @@ sub handler {
                             $hashing = md5_hex($lbl) if ( !defined($hashing) );
                             $monObj->fileKey($hashing);
                             $monObj->logFileName($monitorLogName);
+			    $monObj->acquireLinkTable($acqLinkTable) if defined($acqLinkTable);
                             $device->monitorCb( \&monitor_cb );
                             push( @Monitors, $device );
                             $device->{monitor} = $monObj;
@@ -210,11 +214,11 @@ sub handler {
             push( @DimmerArray, $SpecialEnable );
             push( @DimmerArray, \@Monitors );
 
-            print STDERR $Modem->printLinkTable();
+            $Modem->printLogString( $Modem->printLinkTable() );
 
-            printDimmerLinks(@OutsideDimmers);
-            printDimmerLinks(@InsideDimmers);
-            printDimmerLinks(@SpecialRelay);
+            printDimmerLinks($Modem, @OutsideDimmers);
+            printDimmerLinks($Modem, @InsideDimmers);
+            printDimmerLinks($Modem, @SpecialRelay);
 
             #note--Perl copies all the references to the new thread...
             #that is, futher changes on this thread will not be seen

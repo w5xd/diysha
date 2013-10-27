@@ -28,6 +28,8 @@ sub new {
     $self->{_email}         = $email;
     $self->{_notified}      = 0;
     $self->{_actual}        = 0;
+    $self->{_acquireLinkTable} = 0;
+    $self->{_linkTableAcqStarted} = 0;
     $self->{_stackedMessages} = []; #anonymous array ref
     bless( $self, $class );
     return $self;
@@ -88,6 +90,12 @@ sub _sendEventEmail {
 
 sub onEvent {
     my $self = shift;
+    if ($self->{_acquireLinkTable}) {
+	    $self->{_acquireLinkTable} = 0;
+	    my $dimmer = $_[0];
+	    $dimmer->startGatherLinkTable();
+	    $self->{_linkTableAcqStarted} = 1;
+    }
     unshift @_, time;
     my $flag =  $self->recordEvent(@_);
     # append to a log file, if there is one named
@@ -124,6 +132,12 @@ sub recordEvent {
 
 sub onTimer {
     my $self = shift;
+    if ($DEBUG) {
+        print STDERR "\nonTimer\n";
+        foreach (@_) { print STDERR " arg: " . $_; }
+    }
+    my $dimmer = shift;
+    my $modem = shift;
     my $ret  = 0;
     if ( !defined( $self->{_lastHeartbeat} ) ) {
         $self->{_lastHeartbeat} = time;
@@ -134,12 +148,6 @@ sub onTimer {
 	    && ( $self->{_heartbeat} != 0 )
             && ( $seconds > $self->{_heartbeat} ) );
     }
-    if ($DEBUG) {
-        print STDERR "\nonTimer\n";
-        foreach (@_) { print STDERR " arg: " . $_; }
-        print STDERR " and ret " . $ret . "\n";
-    }
-    my $dimmer = shift;
     if ($ret) {
         my $email = $self->{_email};
         if ( !$self->{_notified} && defined($email) ) {
@@ -179,6 +187,19 @@ sub onTimer {
         }
         $self->{_notified} = 1;
     }
+
+    if ($self->{_linkTableAcqStarted})
+    {
+        $self->{_linkTableAcqStarted} = 0;
+	my $numLinks = $dimmer->getNumberOfLinks();
+	if ($numLinks > 0) {
+	    $modem->printLogString( $dimmer->printLinkTable() );
+        }
+	else {
+	    $modem->printLogString( "Failed to acquire links. Will retry\n");
+	    $self->{_acquireLinkTable} = 1; # try again
+	}
+    }
     return $ret;
 }
 
@@ -192,6 +213,13 @@ sub fileKey {
 sub logFileName {
     my $self = shift;
     $self->{_logFileName} = shift;
+}
+
+sub acquireLinkTable {
+    my $self = shift;
+    my $alt = shift;
+    $self->{_acquireLinkTable} = $alt if defined($alt);
+    return $self->{_acquireLinkTable};
 }
 
 1;

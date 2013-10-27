@@ -317,7 +317,7 @@ sub backgroundThread {
         if ($DEBUG) { print STDERR "LightSchedule evtCount: ".$evtCount."\n";}
         if ( $evtCount == 0 ) {
             foreach ( @{$monitors} ) { 
-		$_->{monitor}->onTimer($_); 
+		$_->{monitor}->onTimer($_, $Modem); 
 	    }
         }
     }

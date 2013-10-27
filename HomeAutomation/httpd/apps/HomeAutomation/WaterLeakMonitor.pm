@@ -24,7 +24,8 @@ sub new { #argument--heartbeat timer
 sub onTimer {
 	my $self = shift;
 	my $dimmer =shift;
-        if ($self->SUPER::onTimer($dimmer))
+	my $modem = shift;
+        if ($self->SUPER::onTimer($dimmer, $modem))
         {
             #heartbeat expired
 	}
