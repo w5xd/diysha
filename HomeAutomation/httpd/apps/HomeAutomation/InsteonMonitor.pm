@@ -193,7 +193,9 @@ sub onTimer {
         $self->{_linkTableAcqStarted} = 0;
 	my $numLinks = $dimmer->getNumberOfLinks();
 	if ($numLinks > 0) {
-	    $modem->printLogString( $dimmer->printLinkTable() );
+	    my $printMsg = $dimmer->name() . "\n";
+	    $printMsg .= $dimmer->printLinkTable();
+	    $modem->printLogString( $printMsg );
         }
 	else {
 	    $modem->printLogString( "Failed to acquire links. Will retry\n");

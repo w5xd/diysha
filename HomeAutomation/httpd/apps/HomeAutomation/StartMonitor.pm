@@ -64,6 +64,7 @@ sub handler {
             my @OutsideDimmers;
             my @InsideDimmers;
             my @SpecialRelay;
+	    my @UnscheduledDimmers;
             my @Monitors;
 
             my $key;
@@ -125,7 +126,10 @@ sub handler {
                                       . $schedule . "\n";
                                 }
                             }
-                        }
+                        } elsif !defined($acqLinkTable)
+			{
+			    push ( @UnscheduledDimmers, $device );
+			}
 
                         #attach a text lable to the device
                         my $lbl = $allVars->{ $key . "_label" };
@@ -219,7 +223,8 @@ sub handler {
             printDimmerLinks($Modem, @OutsideDimmers);
             printDimmerLinks($Modem, @InsideDimmers);
             printDimmerLinks($Modem, @SpecialRelay);
-
+	    printDimmerLinks($Modem, @UnscheduledDimmers);
+            
             #note--Perl copies all the references to the new thread...
             #that is, futher changes on this thread will not be seen
             #on the create'd thread...so we don't touch $Modem anymore
