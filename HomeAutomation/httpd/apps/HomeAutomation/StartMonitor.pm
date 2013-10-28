@@ -126,7 +126,7 @@ sub handler {
                                       . $schedule . "\n";
                                 }
                             }
-                        } elsif !defined($acqLinkTable)
+                        } elsif (!defined($acqLinkTable) )
 			{
 			    push ( @UnscheduledDimmers, $device );
 			}
