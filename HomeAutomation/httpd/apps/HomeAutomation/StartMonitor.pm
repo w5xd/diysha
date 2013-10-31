@@ -56,6 +56,7 @@ sub handler {
     {
         if ( $Modem->openOk() != 0 )    #and got a live COM port
         {
+	    $Modem->setCommandDelay(700); #700 msec delay from incoming to outgoing
             #get modem groups into memory
             $Modem->getModemLinkRecords();
 
