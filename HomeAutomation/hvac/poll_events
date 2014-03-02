@@ -34,7 +34,7 @@ then
   fi
   sleep 30m # polling interval.
 else
-      date
+      date 1>&2
       echo "curl furnevt.cgi failed $CURLRES" 1>&2
       sleep 1m
 fi
