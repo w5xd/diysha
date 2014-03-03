@@ -6,5 +6,4 @@ P2=$!
 echo "Started $P2"
 echo -e "#!/bin/bash\nkill $P2\n\
 	export FURNACE_IP='$FURNACE_IP'\nexport FURNACE_LOGIN='$FURNACE_LOGIN'"\
-       	> stop_last_monitor
-chmod +x stop_last_monitor
+       	> stop_last_monitor.sh

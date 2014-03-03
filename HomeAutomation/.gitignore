@@ -13,7 +13,7 @@ hvac/Release/
 hvac/procEventLog
 hvac/procFurnace
 hvac/procWeatherGov
-hvac/stop_last_monitor
+hvac/stop_last_monitor.sh
 hvac/*.txt
 hvac/*.log
 
