@@ -1,20 +1,10 @@
 #!/bin/bash
 
-#check_set_ehat is expected to be edited for the hardware configuration.
-#various temperatures are available and it also has the logic for disabling
-#the Y wire from the thermostat to the furnace.
-#Also procFurnce.cpp has the logic for converting the modtronx box
-#ADCs to termperatures. It must be modified accordingn to what sensor
-#is wired to what ADC.
-#Finally, the modtronix webserver must be configured with the appropriate
-#ADC's as input, and any inputs not connected, must be configured as outputs
-#else they corrupt the other ADCs because they are pulled up to 12V--above Vcc
-
-#start two sub processes, that both never exit
-#./poll_furnace $HEATPUMP_MIN_TEMPERATURE_F "$WEATHER_URL" >> temperature.log 2>poll_furnace_err.log &
-#P1=$!
+#must have defined $FURNACE_IP and $FURNACE_LOGIN
 ./poll_events poll_events.log relay_events.log 2>poll_events_err.txt &
 P2=$!
-echo "Started $P1 and $P2"
-echo -e "#!/bin/bash\nkill $P1 $P2" > stop_last_monitor
+echo "Started $P2"
+echo -e "#!/bin/bash\nkill $P2\n\
+	export FURNACE_IP='$FURNACE_IP'\nexport FURNACE_LOGIN='$FURNACE_LOGIN'"\
+       	> stop_last_monitor
 chmod +x stop_last_monitor

@@ -31,6 +31,7 @@ if [[ 0 ]] ; then
 curl --silent --max-time 30 $FURNACE_LOGIN http://$FURNACE_IP/furnace.cgi
 RES=$?
 if [ $RES -ne 0 ] ; then
+    date 1>&2
     echo "curl furnace.cgi failed $RES" 1>&2
 fi
 else
