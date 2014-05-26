@@ -33,6 +33,7 @@ routerMonitor/snaps/
 
 readMotion/readMotion
 
+httpd/conf/htotpusers.lock
 httpd/htdocs/symlinks/
 httpd/htdocs/insteon/logfile*.txt
 httpd/temp/
