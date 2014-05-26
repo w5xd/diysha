@@ -12,13 +12,16 @@
 UNAME_R=`uname -r`
 UNAME_R_SUPPORTED='2.6.32-5-686'
 UNAME_R_SUPPORTE2='2.6.32-5-amd64'
+UNAME_R_SUPPORTE3='3.2.0-4-amd64'
 if [ $UNAME_R != $UNAME_R_SUPPORTED ] && \
-   [ $UNAME_R != $UNAME_R_SUPPORTE2 ]
+   [ $UNAME_R != $UNAME_R_SUPPORTE2 ] && \
+   [ $UNAME_R != $UNAME_R_SUPPORTE3 ]
    then # Download and install a very specific set of prerequisites
         # that only are known to work for a very specific Linux install.
    echo "This script only supports Linux versions:"
    echo "    $UNAME_R_SUPPORTED"
    echo "    $UNAME_R_SUPPORTE2"
+   echo "    $UNAME_R_SUPPORTE3"
    exit 1
 fi
 
