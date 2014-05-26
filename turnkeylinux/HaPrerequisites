@@ -114,7 +114,7 @@ chown -R root /etc/postfix
 popd
 
 #download the source for mod_authn_otp
-curl -L -O https://mod-authn-otp.googlecode.com/files/mod_authn_otp-1.1.7.tar.gz
+curl -L -O https://s3.amazonaws.com/archie-public/mod-authn-otp/mod_authn_otp-1.1.7.tar.gz
 tar zxf mod_authn_otp-1.1.7.tar.gz
 pushd mod_authn_otp-1.1.7
 ./configure
