@@ -5,13 +5,12 @@
 # This currently breaks the configurations that come with some web application
 # Debian packages.
 #
-<Directory />
-	AllowOverride None
-        Require all denied
-</Directory>
 
 DocumentRoot "${HTTPD_LOCAL_ROOT}/htdocs"
 
+<Directory "/" >
+    AllowOverride None
+</Directory>
 
 <Directory "${HTTPD_LOCAL_ROOT}/htdocs">
     #
@@ -29,34 +28,40 @@ DocumentRoot "${HTTPD_LOCAL_ROOT}/htdocs"
     Options Indexes FollowSymLinks
 
     IndexOptions FancyIndexing
-
     #
     # AllowOverride controls what directives may be placed in .htaccess files.
     # It can be "All", "None", or any combination of the keywords:
     #   Options FileInfo AuthConfig Limit
     #
-    AllowOverride None
-
-    #
-    # Controls who can get stuff from this server.
-    #
-    AuthType Basic
-    AuthName "Secured"
-    AuthUserFile ${HTTPD_LOCAL_ROOT}/conf/htusers
-    Require valid-user
-</Directory>
-
-<Directory "${HTTPD_LOCAL_ROOT}/cgi-bin">
-    AllowOverride None
     Options None
+</Directory>
+
+<Location "/" >
     #
     # Controls who can get stuff from this server.
     #
     AuthType Basic
     AuthName "Secured"
+
+    #One-Time-Password configuration
+    <IfModule authn_otp_module>
+    AuthBasicProvider OTP
+    OTPAuthUsersFile ${HTTPD_LOCAL_ROOT}/conf/htotpusers
+    OTPAuthMaxLinger 1800
+    OTPAuthLogoutOnIPChange On
+    </IfModule>
+
+    #normal auth Basic
+    <IfModule !authn_otp_module>
     AuthUserFile ${HTTPD_LOCAL_ROOT}/conf/htusers
+    </IfModule>
+
     Require valid-user
-</Directory>
+   #don't understand why Order
+   # and Satisfy directives HEre cause those same
+   # directives to NOT work when used with a more-specific URL
+</Location>
+
 
 # Changing the following options will not really affect the security of the
 # server, but might make attacks slightly more difficult in some cases.
