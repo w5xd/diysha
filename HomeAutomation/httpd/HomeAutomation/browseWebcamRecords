@@ -1,0 +1,57 @@
+#!/usr/local/bin/perl
+#Copyright (c) 2014 by Wayne Wright, Round Rock, Texas.
+#See license at http://github.com/w5xd/diysha/blob/master/LICENSE.md
+# cgi script that presents webcam recordings for browsing and playing
+
+use strict;
+use warnings;
+use HomeAutomation::WebcamRecordConfig;
+use CGI;
+
+my $gapToBreakMovieSeconds = 4;
+
+my $q = CGI->new;
+
+# Process an HTTP request
+# Prepare various HTTP responses
+print $q->header();
+print $q->header('text/html');
+print $q->start_html( "-title" => "Webcam Recording Browser");
+my $v = $q->param('webcam');
+if (!defined($v)) {print $q->end_html("<p>no webcam</p>"); exit 0; }
+my $f = HomeAutomation::WebcamRecordConfig->new($v);
+if (!defined($f)) {print $q->end_html("<p>invalid webcam</p>"); exit 0; }
+
+opendir (my $dh, $f->getLocation()) or die $!;
+my %files;
+while (readdir $dh) {
+        my $thisFile = $_;
+        next if ! ($thisFile =~ /\.jpg$/i);
+	next if (-d $thisFile);
+        my $t = $f->getTime($thisFile); 
+	$files{$thisFile} = $t;
+}
+closedir $dh;
+
+# this sort assumes an alphabetical sort is also a time sort.
+my @fnameSort = sort keys %files;
+my $prevTm;
+my $filesInMovie = 0;
+my $movieName;
+for (@fnameSort) {
+   my $fn = $_;
+   my $tm = $files{$fn};
+   my $df = 1 + $gapToBreakMovieSeconds;
+   $df = $tm - $prevTm if defined $prevTm;
+   if ($df > $gapToBreakMovieSeconds ) 
+   {
+        print "<a href='playWebcamRecords?webcam=$v".
+        	"&amp;start=$movieName&amp;numFiles=$filesInMovie'>".
+                "$movieName ($filesInMovie)</a><br/>\n" if ($filesInMovie);
+	$movieName = $fn;
+        $filesInMovie = 0;
+   }
+   $filesInMovie += 1;
+   $prevTm = $tm;	
+}
+print $q->end_html;

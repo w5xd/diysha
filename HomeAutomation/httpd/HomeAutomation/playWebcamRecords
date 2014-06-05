@@ -1,0 +1,107 @@
+#!/usr/local/bin/perl
+#Copyright (c) 2014 by Wayne Wright, Round Rock, Texas.
+#See license at http://github.com/w5xd/diysha/blob/master/LICENSE.md
+# cgi script that generates a page that will play a series of jpg files 
+
+use strict;
+use warnings;
+use HomeAutomation::WebcamRecordConfig;
+use CGI;
+
+my $maxFilesInMovie = 50;
+my $q = CGI->new;
+
+# Process an HTTP request
+# Prepare various HTTP responses
+print $q->header();
+print $q->header('text/html');
+my $v = $q->param('webcam');
+if ( !defined($v) ) {
+ print $q->start_html( "-title" => "player" );
+ print "<p>no webcam</p>"; $q->end_html; exit 0; }
+my $f = HomeAutomation::WebcamRecordConfig->new($v);
+if ( !defined($f) ) { 
+print $q->start_html( "-title" => "player" );
+print "<p>invalid webcam</p>"; $q->end_html; exit 0; }
+
+my $filesInMovie = $q->param('numFiles');
+   $filesInMovie = $maxFilesInMovie if ($filesInMovie > $maxFilesInMovie);
+my $movieName    = $q->param('start');
+opendir( my $dh, $f->getLocation() ) or die $!;
+my %files;
+while ( readdir $dh ) {
+    my $thisFile = $_;
+    next if !( $thisFile =~ /\.jpg$/i );
+    next if ( -d $thisFile );
+    $files{$thisFile} = 0;
+}
+closedir $dh;
+
+my @fnameSort = sort keys %files;
+my $found     = 0;
+my @movies;
+for (@fnameSort) {
+    my $fn = $_;
+    last if ( $filesInMovie <= 0 );
+    $found = 1 if ( $fn eq $movieName );
+    if ($found)
+    {
+        push @movies, $fn;
+        $filesInMovie--;
+    }
+}
+
+if ($found) {
+  # here we have a list of jpg's to annimate
+	my $imgListInit;
+        my $first = 1;
+        my $urlBase = $f->urlBase();
+	for (@movies) {
+              $imgListInit .= ',' if (!$first);
+              $imgListInit .= '"'.$urlBase.$_.'"';
+              $first = 0;
+	}
+my $JavaScript =<<END;
+
+var imgList = [];
+
+if (document.images) {     // Preload images
+var imgListNames = [
+$imgListInit
+];
+
+for (i = 0; i < imgListNames.length; i++) {
+   imgList.push (new Image);
+   imgList[i].src = imgListNames[i];
+}
+}
+
+function timeimgs(numb) {  // Reusable timer
+thetimer = setTimeout("imgturn(" +numb+ ")", 500);
+}
+
+function imgturn(numb) {   // Reusable image turner
+    if (document.images) {
+        document["animated"].src = eval("imgList[" + numb + "].src");
+
+    ++numb;
+    if (numb >= imgList.length) {         // This will loop the image
+        numb = 0;
+        }
+    }
+    timeimgs(numb);
+}
+END
+
+print $q->start_html( -title => "Webcam Recording Player",
+                      -script => $JavaScript,
+                      -onload => "imgturn(0);");
+print <<BODY
+<div align="center">
+<img src="" name="animated" alt="not present">
+</div>
+BODY
+; 
+}
+print $q->end_html;
+
