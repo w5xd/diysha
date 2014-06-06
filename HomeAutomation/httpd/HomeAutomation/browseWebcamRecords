@@ -45,21 +45,11 @@ for (@fnameSort) {
     my $tm = $files{$fn};
     my $df = 1 + $gapToBreakMovieSeconds;
     $df = $tm - $prevTm if defined $prevTm;
-    my $pd = $printedDate;
-    if (   !defined($pd)
-        || ( $tm->mday != $pd->mday )
-        || ( $tm->mon != $pd->mon )
-        || ( $tm->year != $pd->year ) )
-    {
-        print $tm->strftime("<b>%Y %B %e</b><br/>");
-        $printedDate = $tm;
-    }
     if ( $df > $gapToBreakMovieSeconds ) {
-        print "<a href='playWebcamRecords?webcam=$v"
-          . "&amp;start=$movieName&amp;numFiles=$filesInMovie'>"
-          . $startTime->strftime("%H:%M:%S")
-          . "($filesInMovie)</a><br/>\n"
-          if ($filesInMovie);
+        $printedDate =
+          &printMovieLine( $v, $movieName, $filesInMovie, $startTime,
+            $printedDate )
+          if $filesInMovie;
         $movieName    = $fn;
         $startTime    = $tm;
         $filesInMovie = 0;
@@ -67,9 +57,28 @@ for (@fnameSort) {
     $filesInMovie += 1;
     $prevTm = $tm;
 }
-print "<a href='playWebcamRecords?webcam=$v"
-  . "&amp;start=$movieName&amp;numFiles=$filesInMovie'>"
-  . $startTime->strftime("%H:%M:%S")
-  . "($filesInMovie)</a><br/>\n"
+printMovieLine( $v, $movieName, $filesInMovie, $startTime, $printedDate )
   if ($filesInMovie);
 print $q->end_html;
+
+sub printMovieLine {
+    my $wc           = shift;
+    my $movieName    = shift;
+    my $filesInMovie = shift;
+    my $st           = shift;
+    my $pd           = shift;
+    if (   !defined($pd)
+        || ( $st->mday != $pd->mday )
+        || ( $st->mon != $pd->mon )
+        || ( $st->year != $pd->year ) )
+    {
+        print $st->strftime("<b>%Y %B %e</b><br/>");
+        $pd = $st;
+    }
+    print "<a href='playWebcamRecords?webcam=$wc"
+      . "&amp;start=$movieName&amp;numFiles=$filesInMovie'>"
+      . $st->strftime("%H:%M:%S")
+      . "($filesInMovie)</a><br/>\n";
+    return $pd;
+}
+
