@@ -112,8 +112,9 @@ function imgturn() {
 
 function restart() {
     imgNum = 0;
-   if (waiting == 0) 
-        timeimgs();
+   if (waiting != 0) return;
+   waiting++;
+   imgturn();
 }
 END
 
