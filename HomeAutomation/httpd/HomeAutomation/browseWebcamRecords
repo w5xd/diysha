@@ -38,6 +38,9 @@ my @fnameSort = sort keys %files;
 my $prevTm;
 my $filesInMovie = 0;
 my $movieName;
+my $year;
+my $month;
+my $day;
 for (@fnameSort) {
    my $fn = $_;
    my $tm = $files{$fn};
@@ -45,13 +48,19 @@ for (@fnameSort) {
    $df = $tm - $prevTm if defined $prevTm;
    if ($df > $gapToBreakMovieSeconds ) 
    {
+        print $tm->strftime("%Y %B %e<br/>") 
+	    if (($tm->mday != $day) || ($tm->mon != $month) || ($tm->year != $year));
         print "<a href='playWebcamRecords?webcam=$v".
         	"&amp;start=$movieName&amp;numFiles=$filesInMovie'>".
-                "$movieName ($filesInMovie)</a><br/>\n" if ($filesInMovie);
+                $tm->strftime("%H:%M:%S") .
+                "($filesInMovie)</a><br/>\n" if ($filesInMovie);
 	$movieName = $fn;
         $filesInMovie = 0;
+        $year = $tm->year;
+        $month = $tm->mon;
+        $day = $tm->mday;	
    }
    $filesInMovie += 1;
-   $prevTm = $tm;	
+   $prevTm = $tm;
 }
 print $q->end_html;
