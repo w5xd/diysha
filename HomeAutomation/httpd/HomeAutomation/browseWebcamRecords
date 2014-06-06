@@ -16,20 +16,20 @@ my $q = CGI->new;
 # Prepare various HTTP responses
 print $q->header();
 print $q->header('text/html');
-print $q->start_html( "-title" => "Webcam Recording Browser");
+print $q->start_html( "-title" => "Webcam Recording Browser" );
 my $v = $q->param('webcam');
-if (!defined($v)) {print $q->end_html("<p>no webcam</p>"); exit 0; }
+if ( !defined($v) ) { print $q->end_html("<p>no webcam</p>"); exit 0; }
 my $f = HomeAutomation::WebcamRecordConfig->new($v);
-if (!defined($f)) {print $q->end_html("<p>invalid webcam</p>"); exit 0; }
+if ( !defined($f) ) { print $q->end_html("<p>invalid webcam</p>"); exit 0; }
 
-opendir (my $dh, $f->getLocation()) or die $!;
+opendir( my $dh, $f->getLocation() ) or die $!;
 my %files;
-while (readdir $dh) {
-        my $thisFile = $_;
-        next if ! ($thisFile =~ /\.jpg$/i);
-	next if (-d $thisFile);
-        my $t = $f->getTime($thisFile); 
-	$files{$thisFile} = $t;
+while ( readdir $dh ) {
+    my $thisFile = $_;
+    next if !( $thisFile =~ /\.jpg$/i );
+    next if ( -d $thisFile );
+    my $t = $f->getTime($thisFile);
+    $files{$thisFile} = $t;
 }
 closedir $dh;
 
@@ -38,29 +38,38 @@ my @fnameSort = sort keys %files;
 my $prevTm;
 my $filesInMovie = 0;
 my $movieName;
-my $year;
-my $month;
-my $day;
+my $startTime;
+my $printedDate;
 for (@fnameSort) {
-   my $fn = $_;
-   my $tm = $files{$fn};
-   my $df = 1 + $gapToBreakMovieSeconds;
-   $df = $tm - $prevTm if defined $prevTm;
-   if ($df > $gapToBreakMovieSeconds ) 
-   {
-        print $tm->strftime("%Y %B %e<br/>") 
-	    if (($tm->mday != $day) || ($tm->mon != $month) || ($tm->year != $year));
-        print "<a href='playWebcamRecords?webcam=$v".
-        	"&amp;start=$movieName&amp;numFiles=$filesInMovie'>".
-                $tm->strftime("%H:%M:%S") .
-                "($filesInMovie)</a><br/>\n" if ($filesInMovie);
-	$movieName = $fn;
+    my $fn = $_;
+    my $tm = $files{$fn};
+    my $df = 1 + $gapToBreakMovieSeconds;
+    $df = $tm - $prevTm if defined $prevTm;
+    my $pd = $printedDate;
+    if (   !defined($pd)
+        || ( $tm->mday != $pd->mday )
+        || ( $tm->mon != $pd->mon )
+        || ( $tm->year != $pd->year ) )
+    {
+        print $tm->strftime("<b>%Y %B %e</b><br/>");
+        $printedDate = $tm;
+    }
+    if ( $df > $gapToBreakMovieSeconds ) {
+        print "<a href='playWebcamRecords?webcam=$v"
+          . "&amp;start=$movieName&amp;numFiles=$filesInMovie'>"
+          . $startTime->strftime("%H:%M:%S")
+          . "($filesInMovie)</a><br/>\n"
+          if ($filesInMovie);
+        $movieName    = $fn;
+        $startTime    = $tm;
         $filesInMovie = 0;
-        $year = $tm->year;
-        $month = $tm->mon;
-        $day = $tm->mday;	
-   }
-   $filesInMovie += 1;
-   $prevTm = $tm;
+    }
+    $filesInMovie += 1;
+    $prevTm = $tm;
 }
+print "<a href='playWebcamRecords?webcam=$v"
+  . "&amp;start=$movieName&amp;numFiles=$filesInMovie'>"
+  . $startTime->strftime("%H:%M:%S")
+  . "($filesInMovie)</a><br/>\n"
+  if ($filesInMovie);
 print $q->end_html;
