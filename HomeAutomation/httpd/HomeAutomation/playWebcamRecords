@@ -125,13 +125,13 @@ END
     );
     print <<BODY
 <div align="center">
-<img src="" name="animated" alt="not present">
+<img src="" name="animated" alt="Loading...">
 </div>
 <div align="center">
 <input type="button" value="Again" onclick="restart();"/>
 </div>
 BODY
       ;
-}
+} else { print $q->start_html(-title => "No such file"); }
 print $q->end_html;
 
