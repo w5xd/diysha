@@ -38,7 +38,8 @@ if ( !defined($f) ) {
 my $filesInMovie = $q->param('numFiles');
 $filesInMovie = $maxFilesInMovie if ( $filesInMovie > $maxFilesInMovie );
 my $movieName = $q->param('start');
-opendir( my $dh, $f->getLocation() ) or die $!;
+my $loc = $f->getLocation();
+opendir( my $dh, $loc ) or die $!;
 my %files;
 while ( readdir $dh ) {
     my $thisFile = $_;
@@ -49,7 +50,7 @@ while ( readdir $dh ) {
 closedir $dh;
 
 #sorting must match that in browseWebcamRecords
-my @fnameSort = sort keys %files;
+my @fnameSort = sort {(stat "$loc/$a")[9] <=> (stat "$loc/$b")[9]} keys %files;
 my $found     = 0;
 my @movies;
 for (@fnameSort) {
@@ -63,7 +64,6 @@ for (@fnameSort) {
 }
 
 if ($found) {
-
     # here we have a list of jpg's to annimate
     my $imgListInit;
     my $first   = 1;

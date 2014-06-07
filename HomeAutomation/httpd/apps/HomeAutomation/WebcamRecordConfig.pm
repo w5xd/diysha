@@ -20,6 +20,13 @@ my %_webcams;
 			_yearLength => 15,
 			_datePattern => "%Y%m%d-%H%M%S"};
 
+   # these settings for a generic webcam whose manufacture won't claim credit
+   $_webcams{'2'} = { _location => '/home/webcamftp/wc5Upload',
+                      _urlBase => '../wc5Upload/',
+                      _yearOff => 1,
+                      _yearLength => 12,
+                      _datePattern => "%y%m%d%H%M%S"};
+
 # The $type agument is a key into _webcams, above.
 sub new {
    my $class = shift;

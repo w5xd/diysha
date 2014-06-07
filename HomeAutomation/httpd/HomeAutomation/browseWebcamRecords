@@ -22,7 +22,8 @@ if ( !defined($v) ) { print $q->end_html("<p>no webcam</p>"); exit 0; }
 my $f = HomeAutomation::WebcamRecordConfig->new($v);
 if ( !defined($f) ) { print $q->end_html("<p>invalid webcam</p>"); exit 0; }
 
-opendir( my $dh, $f->getLocation() ) or die $!;
+my $loc = $f->getLocation();
+opendir( my $dh, $loc ) or die $!;
 my %files;
 while ( readdir $dh ) {
     my $thisFile = $_;
@@ -33,8 +34,7 @@ while ( readdir $dh ) {
 }
 closedir $dh;
 
-# this sort assumes an alphabetical sort is also a time sort.
-my @fnameSort = sort keys %files;
+my @fnameSort = sort {(stat "$loc/$a")[9] <=> (stat "$loc/$b")[9]} keys %files;
 my $prevTm;
 my $filesInMovie = 0;
 my $movieName;
