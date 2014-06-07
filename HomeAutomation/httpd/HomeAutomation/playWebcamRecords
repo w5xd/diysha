@@ -50,7 +50,7 @@ while ( readdir $dh ) {
 closedir $dh;
 
 #sorting must match that in browseWebcamRecords
-my @fnameSort = sort {(stat "$loc/$a")[9] <=> (stat "$loc/$b")[9]} keys %files;
+my @fnameSort = sort {(stat "$loc/$b")[9] <=> (stat "$loc/$a")[9]} keys %files;
 my $found     = 0;
 my @movies;
 for (@fnameSort) {
@@ -65,6 +65,7 @@ for (@fnameSort) {
 
 if ($found) {
     # here we have a list of jpg's to annimate
+    @movies = reverse @movies; #switch to ascending time order
     my $imgListInit;
     my $first   = 1;
     my $urlBase = $f->urlBase();
