@@ -45,12 +45,13 @@ while ( readdir $dh ) {
     my $thisFile = $_;
     next if !( $thisFile =~ /\.jpg$/i );
     next if ( -d $thisFile );
-    $files{$thisFile} = 0;
+    my $t = $f->getTime($thisFile);
+    $files{$thisFile} = $t;
 }
 closedir $dh;
 
 #sorting must match that in browseWebcamRecords
-my @fnameSort = sort {(stat "$loc/$b")[9] <=> (stat "$loc/$a")[9]} keys %files;
+my @fnameSort = sort {$files{$b} <=> $files{$a}} keys %files;
 my $found     = 0;
 my @movies;
 for (@fnameSort) {

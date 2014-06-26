@@ -35,7 +35,7 @@ while ( readdir $dh ) {
 closedir $dh;
 
 #time order sort--newest first
-my @fnameSort = sort {(stat "$loc/$b")[9] <=> (stat "$loc/$a")[9]} keys %files;
+my @fnameSort = sort {$files{$b} <=> $files{$a} } keys %files;
 my $prevTm;
 my $filesInMovie = 0;
 my $movieName;
