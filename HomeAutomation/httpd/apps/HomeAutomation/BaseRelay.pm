@@ -7,7 +7,7 @@
 package HomeAutomation::BaseRelay;
 use strict;
 
-my $DEBUG = 1;
+my $DEBUG = 0;
 
 sub new {
      print STDERR "new BaseRelay\n" if $DEBUG;

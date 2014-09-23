@@ -17,17 +17,17 @@ sub new {
     my $self  = $class->SUPER::new(shift);
     my %times;
     my $nextOn = 1;
-    my $a;
-    while ( defined( $a = shift ) ) {
-        if    ( lc (substr($a,0,2)) eq "on" )  { 
+    my $x;
+    while ( defined( $x = shift ) ) {
+        if    ( lc (substr($x,0,2)) eq "on" )  { 
 		# onNNN where NNN are the on-level
-		$a = substr($a,2);
-		if (length $a) { $nextOn = $a + 0 }
+		$x = substr($x,2);
+		if (length $x) { $nextOn = $x + 0 }
 		else {$nextOn = 255; #no digits
 	       	} }
-        elsif ( lc ($a) eq "off" ) { $nextOn = 0; }
-        elsif ( length($a) == 4 ) { # time in hhmm ONLY
-            my $time = ( substr( $a, 0, 2 ) * 60 ) + substr( $a, 2, 2 );
+        elsif ( lc ($x) eq "off" ) { $nextOn = 0; }
+        elsif ( length($x) == 4 ) { # time in hhmm ONLY
+            my $time = ( substr( $x, 0, 2 ) * 60 ) + substr( $x, 2, 2 );
             print STDERR "adding $time => $nextOn\n" if $DEBUG;
             $times{$time} = $nextOn;
         }
