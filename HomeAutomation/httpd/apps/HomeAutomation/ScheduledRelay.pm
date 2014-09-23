@@ -20,11 +20,13 @@ sub new {
     my $a;
     while ( defined( $a = shift ) ) {
         if    ( lc (substr($a,0,2)) eq "on" )  { 
+		# onNNN where NNN are the on-level
 		$a = substr($a,2);
 		if (length $a) { $nextOn = $a + 0 }
-		else {$nextOn = 255; } }
+		else {$nextOn = 255; #no digits
+	       	} }
         elsif ( lc ($a) eq "off" ) { $nextOn = 0; }
-        elsif ( length($a) == 4 ) {
+        elsif ( length($a) == 4 ) { # time in hhmm ONLY
             my $time = ( substr( $a, 0, 2 ) * 60 ) + substr( $a, 2, 2 );
             print STDERR "adding $time => $nextOn\n" if $DEBUG;
             $times{$time} = $nextOn;
@@ -50,14 +52,13 @@ sub DoSchedule {
 	$lastLess = $k;
     }
     my $lookup = ${$times}{$lastLess};
-    print STDERR
-"ScheduledRelay DoSchedule $hour $min v:$lookup \"$hrs\" and \"$lastLess\"\n"
-      if $DEBUG;
+    print STDERR "ScheduledRelay DoSchedule $hour $min v:".
+    	"$lookup \"$hrs\" and \"$lastLess\"\n"  if $DEBUG;
     if ( defined($lookup) ) {
         if ( $lookup != $self->{_lastSet} ) {
             my $dimmer = $self->{_dimmer};
             print STDERR "Setting " . $dimmer->name() . " to $lookup\n"
-              if $DEBUG;
+	   	 if $DEBUG;
             $dimmer->setValue( $lookup );
             $self->{_lastSet} = $lookup;
         }
