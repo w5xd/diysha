@@ -127,7 +127,6 @@ sub backgroundThread {
     my @currentValues        = ();
     my @randomOffset         = ();
     my @currentValuesI       = ();
-    my @currentValuesSpecial = ();
     my @randomOffsetI        = ();
     my @randomDimmer         = ();
 
@@ -141,9 +140,6 @@ sub backgroundThread {
         my @randoms = ( 0, 0, 0, 0 );
         push( @randomOffsetI, \@randoms );
         push( @randomDimmer,  0 );
-    }
-    for ( my $i = 0 ; $i < scalar( @{$argsRly} ) ; $i++ ) {
-        push( @currentValuesSpecial, 0 );
     }
 
     my $setRandomnessForDay = -1;
@@ -276,38 +272,9 @@ sub backgroundThread {
         if ($DoRelayLocal) {
             for ( my $i = 0 ; $i < scalar( @{$argsRly} ) ; $i++ ) {
                 my $rly = ${$argsRly}[$i];
-                if (0) {
-                    my $valForNow = 0;    #midnight
-                    if ( $hour > 5 )  { $valForNow = -1; }
-                    if ( $hour > 8 )  { $valForNow = 1; }
-                    if ( $hour > 10 ) { $valForNow = 0; }
-                    if ( ${$argsRly}[$i] != 0 ) {
-                        if ( $valForNow != $currentValuesSpecial[$i] ) {
-                            print STDERR "At "
-                              . $hour
-                              . " Changing rly "
-                              . $i . " to "
-                              . $valForNow . "\n";
-                            if ( $valForNow == -1 ) {
-                                $rly->setFast($valForNow);
-                            }
-                            else {
-                                $rly->setValue($valForNow);
-                            }
-                            $currentValuesSpecial[$i] = $valForNow;
-                        }
-                    }
-                }
-                else {
                     if ( $rly != 0 ) {
-                        if ( $origHour != $currentValuesSpecial[$i] ) {
-                            $currentValuesSpecial[$i] = $origHour;
-                            print STDERR "At  " . $hour . " rly " . $i
-                              . " fast off.\n";
-                            $rly->setFast(-1);
-                        }
+                        $rly->DoSchedule($origHour, $min);
                     }
-                }
             }
         }
 

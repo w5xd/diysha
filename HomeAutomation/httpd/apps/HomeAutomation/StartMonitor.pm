@@ -16,6 +16,8 @@ require HomeAutomation::HouseConfigurationInsteon;
 require HomeAutomation::AllMonitor;
 require HomeAutomation::WaterLeakMonitor;
 require HomeAutomation::InsteonMonitor;
+require HomeAutomation::AlwaysOffRelay;
+require HomeAutomation::ScheduledRelay;
 
 use threads;
 use AppConfig;
@@ -29,7 +31,7 @@ sub printDimmerLinks {
     foreach (@_) {
         $_->startGatherLinkTable();
         $_->getNumberOfLinks();
-        $Modem->printLogString( $_->name()."\n");
+        $Modem->printLogString( $_->name() . "\n" );
         $Modem->printLogString( $_->printLinkTable() );
     }
     1;
@@ -56,8 +58,9 @@ sub handler {
     {
         if ( $Modem->openOk() != 0 )    #and got a live COM port
         {
-	    $Modem->setCommandDelay(700); #700 msec delay from incoming to outgoing
-            #get modem groups into memory
+            $Modem->setCommandDelay(700)
+              ;    #700 msec delay from incoming to outgoing
+                   #get modem groups into memory
             $Modem->getModemLinkRecords();
 
             #assure modem in non-linking state
@@ -65,7 +68,7 @@ sub handler {
             my @OutsideDimmers;
             my @InsideDimmers;
             my @SpecialRelay;
-	    my @UnscheduledDimmers;
+            my @UnscheduledDimmers;
             my @Monitors;
 
             my $key;
@@ -79,8 +82,8 @@ sub handler {
             if ( !defined($SpecialEnable) ) { $SpecialEnable = 0; }
 
             my $heartbeatHours = $configHash{INSTEON_MONITORS_heartbeat};
-	    $heartbeatHours = 12 if (!defined($heartbeatHours));
-            my $monitorEmail   = $configHash{INSTEON_MONITORS_email};
+            $heartbeatHours = 12 if ( !defined($heartbeatHours) );
+            my $monitorEmail = $configHash{INSTEON_MONITORS_email};
             my $monitorLogName =
               $ENV{HTTPD_LOCAL_ROOT} . "/htdocs/insteon/EventLog.txt";
             my %MonitorHash;
@@ -91,8 +94,8 @@ sub handler {
                 my $allVars      = $iCfg->insteonDevVars();
                 my $insteonClass = $allVars->{ $key . "_class" };
                 if ( !defined($insteonClass) ) { $insteonClass = "Dimmer"; }
-                my $schedule = $allVars->{ $key . "_schedule" };
-		my $acqLinkTable = $allVars->{ $key . "_acquireLinkTable" };
+                my $schedule     = $allVars->{ $key . "_schedule" };
+                my $acqLinkTable = $allVars->{ $key . "_acquireLinkTable" };
                 my $device;
                 switch ( uc $insteonClass ) {
                     case "DIMMER"  { $device = $Modem->getDimmer($key); }
@@ -111,7 +114,8 @@ sub handler {
                     }
                     else {
                         if ( defined($schedule) ) {
-                            switch ( uc $schedule ) {
+                            my @scheduleParams = split( ' ', $schedule );
+                            switch ( uc shift @scheduleParams ) {
                                 case "OUTSIDE" {
                                     push( @OutsideDimmers, $device );
                                 }
@@ -119,7 +123,19 @@ sub handler {
                                     push( @InsideDimmers, $device );
                                 }
                                 case "SPECIAL_RELAY" {
-                                    push( @SpecialRelay, $device );
+                                    my $rly;
+                                    if (@scheduleParams) {
+                                        unshift( @scheduleParams, $device );
+                                        $rly =
+                                          HomeAutomation::ScheduledRelay->new(
+                                            @scheduleParams);
+                                    }
+                                    else {
+                                        $rly =
+                                          HomeAutomation::AlwaysOffRelay->new(
+                                            $device);
+                                    }
+                                    push( @SpecialRelay, $rly );
                                 }
                                 else {
                                     print STDERR
@@ -127,10 +143,10 @@ sub handler {
                                       . $schedule . "\n";
                                 }
                             }
-                        } elsif (!defined($acqLinkTable) )
-			{
-			    push ( @UnscheduledDimmers, $device );
-			}
+                        }
+                        elsif ( !defined($acqLinkTable) ) {
+                            push( @UnscheduledDimmers, $device );
+                        }
 
                         #attach a text lable to the device
                         my $lbl = $allVars->{ $key . "_label" };
@@ -139,7 +155,7 @@ sub handler {
 
                         #override heartbeat?
                         my $hb = $allVars->{ $key . "_heartbeat" };
-                        if (! defined($hb) ) { $hb = $heartbeatHours; }
+                        if ( !defined($hb) ) { $hb = $heartbeatHours; }
 
                         my $monitor = $allVars->{ $key . "_monitor" };
                         my $monObj;
@@ -147,8 +163,9 @@ sub handler {
                             switch ( uc $monitor ) {
                                 case "NONE" { }
                                 case "ALL" {
-                                    $monObj = HomeAutomation::AllMonitor->new(
-                                        $hb, $monitorEmail );
+                                    $monObj =
+                                      HomeAutomation::AllMonitor->new( $hb,
+                                        $monitorEmail );
                                 }
                                 case "WATERLEAK" {
                                     $monObj =
@@ -157,8 +174,8 @@ sub handler {
                                 }
                                 case "HEARTBEAT" {
                                     $monObj =
-                                      HomeAutomation::InsteonMonitor->new(
-                                        $hb, $monitorEmail );
+                                      HomeAutomation::InsteonMonitor->new( $hb,
+                                        $monitorEmail );
                                 }
                                 else {
                                     print STDERR
@@ -175,7 +192,8 @@ sub handler {
                             $hashing = md5_hex($lbl) if ( !defined($hashing) );
                             $monObj->fileKey($hashing);
                             $monObj->logFileName($monitorLogName);
-			    $monObj->acquireLinkTable($acqLinkTable) if defined($acqLinkTable);
+                            $monObj->acquireLinkTable($acqLinkTable)
+                              if defined($acqLinkTable);
                             $device->monitorCb( \&monitor_cb );
                             push( @Monitors, $device );
                             $device->{monitor} = $monObj;
@@ -185,20 +203,24 @@ sub handler {
                 }
             }
 
-            #playback saved events...
-	    #This playback from disk enables the monitor alarms to have lengths longer
-	    #than the webserver runs. ie if apache is restarted, the monitor still 
-	    #sends the email at the right interval
-            if ( open FH,  $monitorLogName)
-            {
+      #playback saved events...
+      #This playback from disk enables the monitor alarms to have lengths longer
+      #than the webserver runs. ie if apache is restarted, the monitor still
+      #sends the email at the right interval
+            if ( open FH, $monitorLogName ) {
                 while (<FH>) {
                     chomp;
                     ( my $key, my $time, my $cmd1, my $group ) = split("\t");
-                    print STDERR "getMonitorMessages read: " . $_ . "\n" if ($DEBUG);
-                    if (defined($key)&& defined($time) && defined($cmd1) && defined($group))
+                    print STDERR "getMonitorMessages read: " . $_ . "\n"
+                      if ($DEBUG);
+                    if (   defined($key)
+                        && defined($time)
+                        && defined($cmd1)
+                        && defined($group) )
                     {
                         my $mon = $MonitorHash{$key};
-                        $mon->recordEvent( $time, 0, $group, $cmd1 ) if ( defined($mon) );
+                        $mon->recordEvent( $time, 0, $group, $cmd1 )
+                          if ( defined($mon) );
                     }
                     else {
                         print STDERR "StartupMonitor split didn't work: "
@@ -221,11 +243,11 @@ sub handler {
 
             $Modem->printLogString( $Modem->printLinkTable() );
 
-            printDimmerLinks($Modem, @OutsideDimmers);
-            printDimmerLinks($Modem, @InsideDimmers);
-            printDimmerLinks($Modem, @SpecialRelay);
-	    printDimmerLinks($Modem, @UnscheduledDimmers);
-            
+            printDimmerLinks( $Modem, @OutsideDimmers );
+            printDimmerLinks( $Modem, @InsideDimmers );
+            printDimmerLinks( $Modem, @SpecialRelay );
+            printDimmerLinks( $Modem, @UnscheduledDimmers );
+
             #note--Perl copies all the references to the new thread...
             #that is, futher changes on this thread will not be seen
             #on the create'd thread...so we don't touch $Modem anymore
