@@ -32,8 +32,8 @@ sub new {
             $times{$time} = $nextOn;
         }
     }
+    my @keys = sort {$a <=> $b} (keys %times);
     $self->{_times} = \%times;
-    my @keys = sort (keys %times);
     $self->{_keys} = \@keys;
     bless $self, $class;
     return $self;
