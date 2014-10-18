@@ -102,9 +102,9 @@ if ( defined( $FORM{Update} )
 ( $inside, $outside, $relay ) =
   &HomeAutomation::LightSchedule::getScheduleOnOff();
 print STDOUT "<tr><td>"
-  . ( $outside ? "On" : "Off" ) . "</td>" . "<td>"
-  . ( $inside  ? "On" : "Off" ) . "</td>" . "<td>"
-  . ( $relay   ? "On" : "Off" ) . "</td>" . "<td>"
+  . ( $outside ? "Active" : "Inactive" ) . "</td>" . "<td>"
+  . ( $inside  ? "Active" : "Inactive" ) . "</td>" . "<td>"
+  . ( $relay   ? "Active" : "Inactive" ) . "</td>" . "<td>"
   . &HomeAutomation::Config::HEATPUMP_MIN_TEMPERATURE_F()
   . "</td></tr>\n"
   . "</table>\n";
