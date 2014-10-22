@@ -22,6 +22,8 @@ if ( !defined($v) ) { print $q->end_html("<p>no webcam</p>"); exit 0; }
 my $f = HomeAutomation::WebcamRecordConfig->new($v);
 if ( !defined($f) ) { print $q->end_html("<p>invalid webcam</p>"); exit 0; }
 
+my @errFiles;
+
 my $loc = $f->getLocation();
 opendir( my $dh, $loc ) or die $!;
 my %files;
@@ -29,8 +31,11 @@ while ( readdir $dh ) {
     my $thisFile = $_;
     next if !( $thisFile =~ /\.jpg$/i );
     next if ( -d $thisFile );
-    my $t = $f->getTime($thisFile);
-    $files{$thisFile} = $t;
+    eval {
+        my $t = $f->getTime($thisFile);
+        $files{$thisFile} = $t;
+    };
+    if ($@) { push @errFiles, $thisFile; }
 }
 closedir $dh;
 
@@ -60,6 +65,9 @@ for (@fnameSort) {
 }
 printMovieLine( $v, $movieName, $filesInMovie, $startTime, $printedDate )
   if ($filesInMovie);
+
+for (@errFiles) {print "<p>Error with file " . $_ . "</p>";}
+
 print $q->end_html;
 
 sub printMovieLine {
