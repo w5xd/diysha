@@ -45,8 +45,10 @@ while ( readdir $dh ) {
     my $thisFile = $_;
     next if !( $thisFile =~ /\.jpg$/i );
     next if ( -d $thisFile );
-    my $t = $f->getTime($thisFile);
-    $files{$thisFile} = $t;
+    eval {
+       my $t = $f->getTime($thisFile);
+       $files{$thisFile} = $t;
+    } #ignore errors
 }
 closedir $dh;
 
