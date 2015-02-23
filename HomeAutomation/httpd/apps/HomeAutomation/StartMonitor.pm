@@ -257,6 +257,7 @@ sub handler {
             $bck->detach();
         }
     }
+    &HomeAutomation::PollFurnace::start($hvacDir);
     $r->puts("\n");
     $r->puts( "Call to openPowerLineModem.\n Got "
           . $Modem->openOk() . ", "
@@ -264,11 +265,6 @@ sub handler {
           . "\n" );
     if ( defined($bck) ) {
         $r->puts("Started a thread\n");
-        my @pfargs;
-        push( @pfargs, $hvacDir );
-        $bck = threads->create( 'HomeAutomation::PollFurnace::backgroundThread',
-            @pfargs );
-        $bck->detach();
     }
     return Apache2::Const::OK;
 }

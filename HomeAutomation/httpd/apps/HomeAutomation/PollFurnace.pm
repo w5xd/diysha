@@ -3,9 +3,13 @@
 package HomeAutomation::PollFurnace;
 use strict;
 use IPC::Open2;
+use threads;
+use threads::shared;
 require HomeAutomation::Config;
 
 my $DEBUG = 1;
+
+my $started : shared;
 
 sub backgroundThread {
     my $dir = shift;    # hvac directory
@@ -13,19 +17,22 @@ sub backgroundThread {
     unlink 'combine_inputs_err.txt', 'procFurnace_err.txt',
       'check_set_eheat_out.txt';
     &HomeAutomation::Config::initialize(1);
-        if ($DEBUG) {
-              print STDERR "PollFurnace at " . $dir . " and with temp " .
-                 &HomeAutomation::Config::HEATPUMP_MIN_TEMPERATURE_F() . 
-                " and with login: " . $HomeAutomation::Config::FURNACE_LOGIN .
-                " and HTTPD_LOCAL_ROOT " . $ENV{HTTPD_LOCAL_ROOT} .
-		"\n";
-        }
-    return;
+    if ($DEBUG) {
+        print STDERR "PollFurnace::backgroundThread at "
+          . $dir
+          . " and with temp "
+          . &HomeAutomation::Config::HEATPUMP_MIN_TEMPERATURE_F()
+          . " and with login: "
+          . $HomeAutomation::Config::FURNACE_LOGIN
+          . " and HTTPD_LOCAL_ROOT "
+          . $ENV{HTTPD_LOCAL_ROOT} . "\n";
+    }
 #THIS code supports custom hvac monitor with a web server on it
 #Its at FURNACE_IP nd has a set of web methods that return measured
 #temperatures and furnace control line (O, B, R, G, Y, etc.) settings
 #and changes (events). It also has a heat-pump override function
 #on it that this code turns on and off based on measured temperatures 
+
     for ( my $pollCount = 0 ; $pollCount >= 0 ; ) {
         my $cmdInHandle;
         my $cmd = "";
@@ -70,4 +77,14 @@ sub backgroundThread {
     }
 }
 
+sub start {
+    lock($started);
+    print STDERR "PollFurnace::start started:$started\n" if $DEBUG;
+    return if $started;
+    $started = 1;
+    my $bck = threads->create( 'HomeAutomation::PollFurnace::backgroundThread', @_ );
+    $bck->detach();
+}
+
 1;
+
