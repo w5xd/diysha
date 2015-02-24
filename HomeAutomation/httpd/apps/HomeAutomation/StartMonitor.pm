@@ -20,6 +20,7 @@ require HomeAutomation::AlwaysOffRelay;
 require HomeAutomation::ScheduledRelay;
 
 use threads;
+use threads::shared;
 use AppConfig;
 use Switch;
 
@@ -42,6 +43,7 @@ sub monitor_cb {    # forward to monitor object
     my $dimmer = $_[0];
     return $dimmer->{monitor}->onEvent(@_);
 }
+my $initSchedOnce : shared;
 
 sub handler {
     my $r = shift;
@@ -54,7 +56,14 @@ sub handler {
     my $Modem   = PowerLineModule::Modem->new( $dev, 2, $logfile );
     my $bck;
 
-    if ( $Modem->wasOpen() == 0 )    #first time through
+    my $doneAlready;
+    {
+       lock($initSchedOnce);
+       $doneAlready = $initSchedOnce;
+       $initSchedOnce = 1;
+    }
+
+    if ( !$doneAlready )    #first time through
     {
         if ( $Modem->openOk() != 0 )    #and got a live COM port
         {
@@ -261,7 +270,8 @@ sub handler {
     $r->puts("\n");
     $r->puts( "Call to openPowerLineModem.\n Got "
           . $Modem->openOk() . ", "
-          . $Modem->wasOpen()
+          . $Modem->wasOpen() . ", "
+          . ($doneAlready ? "1" : "0")
           . "\n" );
     if ( defined($bck) ) {
         $r->puts("Started a thread\n");
