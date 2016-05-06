@@ -1,17 +1,11 @@
 #!/bin/bash
 UNAME_R=`uname -r`
-UNAME_R_SUPPORTED='2.6.32-5-686'
-UNAME_R_SUPPORTE2='2.6.32-5-amd64'
-UNAME_R_SUPPORTE3='3.2.0-4-amd64'
-if [ $UNAME_R != $UNAME_R_SUPPORTED ] && \
-   [ $UNAME_R != $UNAME_R_SUPPORTE2 ] && \
-   [ $UNAME_R != $UNAME_R_SUPPORTE3 ]
+UNAME_R_SUPPORTED='3.16.0-4-amd64'
+if [ $UNAME_R != $UNAME_R_SUPPORTED ]
    then # Download and install a very specific set of prerequisites
         # that only are known to work for a very specific Linux install.
    echo "This script only supports Linux versions:"
    echo "    $UNAME_R_SUPPORTED"
-   echo "    $UNAME_R_SUPPORTE2"
-   echo "    $UNAME_R_SUPPORTE3"
    exit 1
 fi
 
@@ -57,13 +51,26 @@ chown www-data /var/HomeAutomation/httpd/htdocs/insteon
 
 #www-data runs the webserver and must write a couple of things
 chown www-data /var/HomeAutomation/httpd/logs /var/HomeAutomation/httpd/run /var/HomeAutomation/routerMonitor /var/HomeAutomation/thermostat /var/HomeAutomation/hvac
-rm -rf /etc/apache2
 cp -r diysha/turnkeylinux/etc/apache2 /etc
 cp diysha/turnkeylinux/etc/init.d/* /etc/init.d/
+a2enmod cgid
+a2enmod ssl
+a2enmod perl
 pushd /etc
 ln -s ../init.d/HomeAutomation rc2.d/S02HomeAutomation
 ln -s ../init.d/HomeAutomation rc3.d/S02HomeAutomation
 ln -s ../init.d/HomeAutomation rc5.d/S02HomeAutomation
+cd apache2
+echo "export HTTPD_LOCAL_ROOT=/var/HomeAutomation/httpd" >> envvars
+cd sites-enabled
+ln -s ../sites-available/homeautomation-ssl.conf
+rm 000-default.conf
+cd ../conf-enabled
+ln -s ../conf-available/homeautomation*
+rm security.conf
+rm serve-cgi-bin.conf
+cd ../mods-enabled
+ln -s ../mods-available/w5xdInsteon.load
 popd
 
 # The time zone must match that of the radiothermostat

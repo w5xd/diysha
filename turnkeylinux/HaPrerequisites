@@ -10,18 +10,12 @@
 #     https://github.com/w5xd/diysha
 #
 UNAME_R=`uname -r`
-UNAME_R_SUPPORTED='2.6.32-5-686'
-UNAME_R_SUPPORTE2='2.6.32-5-amd64'
-UNAME_R_SUPPORTE3='3.2.0-4-amd64'
-if [ $UNAME_R != $UNAME_R_SUPPORTED ] && \
-   [ $UNAME_R != $UNAME_R_SUPPORTE2 ] && \
-   [ $UNAME_R != $UNAME_R_SUPPORTE3 ]
+UNAME_R_SUPPORTER='3.16.0-4-amd64'
+if [ $UNAME_R != $UNAME_R_SUPPORTED ] 
    then # Download and install a very specific set of prerequisites
         # that only are known to work for a very specific Linux install.
    echo "This script only supports Linux versions:"
    echo "    $UNAME_R_SUPPORTED"
-   echo "    $UNAME_R_SUPPORTE2"
-   echo "    $UNAME_R_SUPPORTE3"
    exit 1
 fi
 
@@ -41,7 +35,7 @@ echo "**** HomeAutomation installing needed apps not in turnkeylinux core"
 # apt-get is the tool used in debian linux distributions. your mileage may vary.
 apt-get --assume-yes install \
          curl gnuplot-x11 apache2-mpm-worker libapache2-mod-perl2 libyaml-perl \
-         make g++ bzip2 p7zip libexpat1-dev pkg-config git openssl \
+         make g++ bzip2 p7zip-full libexpat1-dev pkg-config git openssl \
          imagemagick perlmagick apache2-threaded-dev
 
 echo "**** HomeAutomation installing postfix. can send email with it"
@@ -63,6 +57,7 @@ install IO::String
 install HTML::FromANSI
 install XML::Parser
 install AppConfig
+install Switch
 endOfCPANcommands
 
 echo "**** HomeAutomation downloading boost"
