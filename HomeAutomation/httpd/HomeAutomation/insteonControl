@@ -1,6 +1,6 @@
 #!/usr/local/bin/perl
 #Copyright (c) 2013 by Wayne Wright, Round Rock, Texas.
-#See license at http://github.com/w5xd/diysha/blob/master/LICENSE.md 
+#See license at http://github.com/w5xd/diysha/blob/master/LICENSE.md
 # cgi script that process POST command to control Insteon devices
 # via  http
 
@@ -20,7 +20,7 @@ my $config = AppConfig->new(
         },
     }
 );
-my $cfgFileName = $ENV{HTTPD_LOCAL_ROOT}."/../HouseConfiguration.ini";
+my $cfgFileName = $ENV{HTTPD_LOCAL_ROOT} . "/../HouseConfiguration.ini";
 $config->file($cfgFileName);
 
 my $ModemDevice = $config->get("INSTEON_Modem");
@@ -86,17 +86,24 @@ else {
         && defined( $FORM{DimmerInsteonId} )
         && defined( $FORM{DimmerValue} ) )
     {
-        my $id           = $FORM{DimmerInsteonId};
-        my $new_val      = $FORM{DimmerValue};
-        my $DimmerHandle = $Modem->getDimmer( $id );
+        my $id      = $FORM{DimmerInsteonId};
+        my $isFan   = $FORM{isFan} eq "yes";
+        my $new_val = $FORM{DimmerValue};
+        my $DimmerHandle =
+          $isFan ? $Modem->getFanlinc($id) : $Modem->getDimmer($id);
         if ( $DimmerHandle != 0 ) {
             if ( $new_val ne "" ) {
                 my $res;
-                if ( ( $new_val == -1 ) || ( $new_val == 256 ) ) {
-                    $res = $DimmerHandle->setFast( $new_val );
+                if ( !$isFan ) {
+                    if ( ( $new_val == -1 ) || ( $new_val == 256 ) ) {
+                        $res = $DimmerHandle->setFast($new_val);
+                    }
+                    else {
+                        $res = $DimmerHandle->setValue($new_val);
+                    }
                 }
                 else {
-                    $res = $DimmerHandle->setValue( $new_val );
+                    $res = $DimmerHandle->setFanSpeed($new_val);
                 }
                 print STDOUT "Set dimmer "
                   . $id . " to "
@@ -106,7 +113,12 @@ else {
                   . "<br/>\n";
             }
             else {
-                $new_val = $DimmerHandle->getValue( 0 );
+                if ( !$isFan ) {
+                    $new_val = $DimmerHandle->getValue(0);
+                }
+                else {
+                    $new_val = $DimmerHandle->getFanSpeed();
+                }
                 print STDOUT "Got dimmer value "
                   . $new_val
                   . " for dimmer id "
