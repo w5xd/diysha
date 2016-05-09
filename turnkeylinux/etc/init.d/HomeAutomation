@@ -10,8 +10,8 @@
 
 case "$1" in
 'start')
-        su www-data -c /var/HomeAutomation/ReadStartPage& >/dev/null 2>&1
-        su www-data -c /var/HomeAutomation/routerMonitor/start
+        su www-data -c /var/HomeAutomation/ReadStartPage -s /bin/bash >/dev/null 2>&1
+        # su www-data -c /var/HomeAutomation/routerMonitor/start -s /bin/bash
         ;;
 'stop')
         ;;
