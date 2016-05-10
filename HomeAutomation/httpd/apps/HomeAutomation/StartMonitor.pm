@@ -58,9 +58,9 @@ sub handler {
 
     my $doneAlready;
     {
-       lock($initSchedOnce);
-       $doneAlready = $initSchedOnce;
-       $initSchedOnce = 1;
+        lock($initSchedOnce);
+        $doneAlready   = $initSchedOnce;
+        $initSchedOnce = 1;
     }
 
     if ( !$doneAlready )    #first time through
@@ -157,7 +157,7 @@ sub handler {
                             push( @UnscheduledDimmers, $device );
                         }
 
-                        #attach a text lable to the device
+                        #attach a text label to the device
                         my $lbl = $allVars->{ $key . "_label" };
                         if ( !defined($lbl) ) { $lbl = $key; }
                         $device->name($lbl);
@@ -239,6 +239,51 @@ sub handler {
                 close FH;
             }
 
+            $Modem->printLogString( $Modem->printLinkTable() );
+
+            printDimmerLinks( $Modem, @OutsideDimmers );
+            printDimmerLinks( $Modem, @InsideDimmers );
+            printDimmerLinks( $Modem, @SpecialRelay );
+            printDimmerLinks( $Modem, @UnscheduledDimmers );
+
+	    # add the X10 devices to the schedules last cuz they have no links
+	    # and therefore cannot printDimmerLinks
+            foreach $key ( keys %{ $iCfg->x10Ids() } ) {
+                if ($DEBUG) {
+                    print STDERR "StartupMonitor x10key=" . $key . "\n";
+                }
+                my $device = $Modem->getX10Dimmer( substr( $key, 0, 1 ),
+                    substr( $key, 1 ) );
+                my $allVars  = $iCfg->x10DevVars();
+                my $schedule = $allVars->{ $key . "_schedule" };
+                if ( defined($device) ) {
+
+                    #attach a text lable to the device
+                    my $lbl = $allVars->{ $key . "_label" };
+                    if ( !defined($lbl) ) { $lbl = $key; }
+                    $device->name($lbl);
+                    if ( defined($schedule) ) {
+                        my @scheduleParams = split( ' ', $schedule );
+                        switch ( uc shift @scheduleParams ) {
+                            case "OUTSIDE" {
+                                push( @OutsideDimmers, $device );
+                            }
+                            case "INSIDE" {
+                                push( @InsideDimmers, $device );
+                            }
+                            else {
+                                print STDERR
+"StartupMonitor encountered invalid x10 schedule "
+                                  . $schedule . "\n";
+                            }
+                        }
+                    }
+                }
+            }
+
+            #note--Perl copies all the references to the new thread...
+            #that is, futher changes on this thread will not be seen
+            #on the create'd thread...so we don't touch $Modem anymore
             my @DimmerArray;
 
             push( @DimmerArray, $Modem );
@@ -250,16 +295,6 @@ sub handler {
             push( @DimmerArray, $SpecialEnable );
             push( @DimmerArray, \@Monitors );
 
-            $Modem->printLogString( $Modem->printLinkTable() );
-
-            printDimmerLinks( $Modem, @OutsideDimmers );
-            printDimmerLinks( $Modem, @InsideDimmers );
-            printDimmerLinks( $Modem, @SpecialRelay );
-            printDimmerLinks( $Modem, @UnscheduledDimmers );
-
-            #note--Perl copies all the references to the new thread...
-            #that is, futher changes on this thread will not be seen
-            #on the create'd thread...so we don't touch $Modem anymore
             $bck = threads->create(
                 'HomeAutomation::LightSchedule::backgroundThread',
                 @DimmerArray );
@@ -271,7 +306,7 @@ sub handler {
     $r->puts( "Call to openPowerLineModem.\n Got "
           . $Modem->openOk() . ", "
           . $Modem->wasOpen() . ", "
-          . ($doneAlready ? "1" : "0")
+          . ( $doneAlready ? "1" : "0" )
           . "\n" );
     if ( defined($bck) ) {
         $r->puts("Started a thread\n");
