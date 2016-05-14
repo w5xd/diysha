@@ -106,9 +106,10 @@ else
 function copySelectToInput (element){
     var inBox = document.getElementById("deviceIdInput");
     var option = element.options[element.selectedIndex];
-    inBox.value = optionValues[option.value/2];
+    var optidx = option.value * 2;
+    inBox.value = optionValues[optidx];
     var classBox = document.getElementById("idInsteonClass");
-    classBox.value = optionValues[1 + (option.value/2)];
+    classBox.value = optionValues[1 + optidx];
     var fanBox = document.getElementById("isFanID");
     var selText = option.text;
     fanBox.value = (selText.indexOf(" (Fan)") == selText.length - 6) ? "yes" : "no";
