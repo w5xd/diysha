@@ -56,6 +56,33 @@ sub insteonDevVars { # must have called insteonIds first
     return $self->{_insteonDevVars};
 }
 
+sub x10Ids {   
+    my $self = shift;
+    my $iVars = $self->{_cfg};
+    my %vars = $iVars->varlist( "^X10_DEVID_", 1 );
+    my %xIds = ();    #hash to be populated with empty hashes
+    foreach my $key ( keys %vars ) {
+        if (index( $key , "_") != -1)
+        {
+            my @keySplit = split( '_', $key, 2 );
+            $xIds{ $keySplit[0] } = 0;
+            if ($DEBUG) {
+                print STDERR "getIds adding "
+                  . $key
+                  . " parsed is: "
+                  . $keySplit[0] . "\n";
+            }
+	}
+    }
+    $self->{_x10DevVars} = \%vars;
+    $self->{_x10Ids} = \%xIds;
+}
+
+sub x10DevVars { # must have called insteonIds first
+    my $self =shift;
+    return $self->{_x10DevVars};
+}
+
 sub allVars {
     my $self = shift;
     if (!defined($self->{_allVars})) { 
