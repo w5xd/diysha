@@ -9,10 +9,12 @@ my $iVars = HomeAutomation::HouseConfigurationInsteon->new();
 
 my @DimmerAddrs;
 my @DimmerNames;
+my @DimmerClasses;
 my $defaultEnable = $iVars->allVars()->{LIGHTS_PAGE_defaultCommandPage};
 if ($DEBUG) {
     print STDERR "insteonCommandForm defaultenable=" . $defaultEnable . "\n";
 }
+
 if    ( !defined($defaultEnable) )  { $defaultEnable = 1; }
 elsif ( lc $defaultEnable eq "no" ) { $defaultEnable = 0; }
 else                                { $defaultEnable = 1; }
@@ -23,6 +25,7 @@ foreach my $key ( keys %{ $iVars->insteonIds() } ) {
     my $insteonVars = $iVars->insteonDevVars();
     my $enable      = $insteonVars->{ $key . "_OnCommandPage" };
     my $className   = $insteonVars->{ $key . "_class" };
+    if (!defined($className) || ($className eq "")) { $className = "Dimmer"; }
     if    ( !defined($enable) )   { $enable = $defaultEnable; }
     elsif ( lc $enable eq "yes" ) { $enable = 1; }
     elsif ( lc $enable eq "no" )  { $enable = 0; }
@@ -39,11 +42,13 @@ foreach my $key ( keys %{ $iVars->insteonIds() } ) {
     if ($enable) {
         push( @DimmerAddrs, $key );
         push( @DimmerNames, $lbl );
+	push( @DimmerClasses, $className);
         $sortHash{ $ord * 2 } =
           $curPushIdx++;    #duplicate LightsPageOrder settings are lost
         if ( $className eq "Fanlinc" ) {
             push( @DimmerAddrs, $key );
             push( @DimmerNames, $lbl . " (Fan)" );
+	    push( @DimmerClasses, $className);
             $sortHash{ 1 + $ord * 2 } = $curPushIdx++;
         }
     }
@@ -56,6 +61,17 @@ print STDOUT <<htmlText1End
 <head>
 <title>Insteon Command</title>
 <script type="text/javascript">
+var optionValues = [
+htmlText1End
+;
+my @sortedKeys = sort { $a <=> $b } ( keys %sortHash);
+foreach my $k ( @sortedKeys )  {
+    my $idx = $sortHash{$k};
+    print STDOUT '"' . $DimmerAddrs[$idx] . '", "' . $DimmerClasses[$idx] . '",' . "\r\n";
+}
+
+print STDOUT <<htmlText2End
+];
 <!--
 // copyright 1999 Idocs, Inc. http://www.idocs.com
 // Distribute this script freely but keep this notice in place
@@ -90,7 +106,9 @@ else
 function copySelectToInput (element){
     var inBox = document.getElementById("deviceIdInput");
     var option = element.options[element.selectedIndex];
-    inBox.value = option.value;
+    inBox.value = optionValues[option.value/2];
+    var classBox = document.getElementById("idInsteonClass");
+    classBox.value = optionValues[1 + (option.value/2)];
     var fanBox = document.getElementById("isFanID");
     var selText = option.text;
     fanBox.value = (selText.indexOf(" (Fan)") == selText.length - 6) ? "yes" : "no";
@@ -116,20 +134,21 @@ function copySelectToInput (element){
                 <input id='deviceIdInput' 
                 name="DimmerInsteonId" size='8' maxlength='8' 
                 onkeypress="return numbersonly(this, event, 1)" />
+		<input type='hidden' id='idInsteonClass' name='insteonClass' value='Dimmer' />
 		<input type='hidden' id='isFanID' name='isFan' value='no' />
             </td>
             <td align='center'>
             <select name="named_device" id="deviceSelectBox" onchange='copySelectToInput(this)'>
-htmlText1End
+htmlText2End
   ;
 
 print STDOUT "<option value='MANUAL' selected></option>\n";
 
-my $i;
-foreach my $k ( sort { $a <=> $b } ( keys %sortHash ) ) {
+my $i = 0;
+foreach my $k ( @sortedKeys )  {
     my $idx = $sortHash{$k};
     print STDOUT "<option value='"
-      . $DimmerAddrs[$idx] . "' text='"
+      . $i++ . "' text='"
       . $DimmerNames[$idx] . "'>"
       . $DimmerNames[$idx]
       . "</option>\n";

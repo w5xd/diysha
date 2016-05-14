@@ -87,10 +87,16 @@ else {
         && defined( $FORM{DimmerValue} ) )
     {
         my $id      = $FORM{DimmerInsteonId};
-        my $isFan   = $FORM{isFan} eq "yes";
         my $new_val = $FORM{DimmerValue};
-        my $DimmerHandle =
-          $isFan ? $Modem->getFanlinc($id) : $Modem->getDimmer($id);
+        my $isFan   = $FORM{isFan} eq "yes";
+        my $insteonClass   = uc $FORM{insteonClass};
+        my $DimmerHandle = 0;
+	if ($insteonClass eq "FANLINC") {
+            $DimmerHandle = $Modem->getFanlinc($id); }
+        elsif ($insteonClass eq "RELAY")  {
+	    $DimmerHandle = $Modem->getRelay($id); }
+	else {
+	    $DimmerHandle = $Modem->getDimmer($id); }
         if ( $DimmerHandle != 0 ) {
             if ( $new_val ne "" ) {
                 my $res;

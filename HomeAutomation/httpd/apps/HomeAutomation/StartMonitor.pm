@@ -108,6 +108,7 @@ sub handler {
                 my $device;
                 switch ( uc $insteonClass ) {
                     case "DIMMER"  { $device = $Modem->getDimmer($key); }
+                    case "RELAY"   { $device = $Modem->getRelay($key); }
                     case "FANLINC" { $device = $Modem->getFanlinc($key); }
                     case "KEYPAD"  { $device = $Modem->getKeypad($key); }
                     else {
