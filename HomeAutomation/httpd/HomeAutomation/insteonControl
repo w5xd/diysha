@@ -95,6 +95,12 @@ else {
             $DimmerHandle = $Modem->getFanlinc($id); }
         elsif ($insteonClass eq "RELAY")  {
 	    $DimmerHandle = $Modem->getRelay($id); }
+        elsif ($insteonClass eq "X10DIMMER")  {
+	    if (defined($new_val) && $new_val ne "")
+	    {# don't try to read x10
+	        $DimmerHandle = $Modem->getX10Dimmer($id); 
+	    }
+        }
 	else {
 	    $DimmerHandle = $Modem->getDimmer($id); }
         if ( $DimmerHandle != 0 ) {

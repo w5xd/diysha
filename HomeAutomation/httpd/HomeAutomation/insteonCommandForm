@@ -53,7 +53,31 @@ foreach my $key ( keys %{ $iVars->insteonIds() } ) {
         }
     }
 }
+foreach my $key ( keys %{ $iVars->x10Ids() } ) {
+    my $x10DevVars = $iVars->x10DevVars();
+    my $enable      = $x10DevVars->{ $key . "_OnCommandPage" };
+    my $className   = "X10Dimmer";
+    if    ( !defined($enable) )   { $enable = $defaultEnable; }
+    elsif ( lc $enable eq "yes" ) { $enable = 1; }
+    elsif ( lc $enable eq "no" )  { $enable = 0; }
 
+    my $lbl = $x10DevVars->{ $key . "_label" };
+    if ( !defined($lbl) ) { $lbl = $key; }    #insteon address is default label
+
+    my $ord = $x10DevVars->{ $key . "_LightsPageOrder" };
+    if ( !defined($ord) ) {
+        $ord = 10000000 + $curPushIdx
+          ;    #synthesize sort ordinal--hopefully bigger than in ini file
+    }
+
+    if ($enable) {
+        push( @DimmerAddrs, $key );
+        push( @DimmerNames, $lbl );
+	push( @DimmerClasses, $className);
+        $sortHash{ $ord * 2 } =
+          $curPushIdx++;    #duplicate LightsPageOrder settings are lost
+    }
+}
 print STDOUT "Content-type: text/html\r\n\r\n";
 print STDOUT <<htmlText1End
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Frameset//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd">
