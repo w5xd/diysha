@@ -10,7 +10,7 @@
 #include "weather_gov.h"
 
 static const char PCSENSOR_TAG[] = "*** pcsensor ***";
-static const char SANDPOINT_TAG[] = "*** sandpoint airport ***";
+static const char NOAA_TAG[] = "*** noaa temperature ***";
 static const int NUM_FURNACE_TEMPERATURE_CHANNELS = 3;
 static const int NUM_FURNACE_TEMPERATURE_FETCHES = 1;
 static const char * const FURNACE_CGI_TAG[NUM_FURNACE_TEMPERATURE_FETCHES] = {"*** furnace.cgi ***",
@@ -26,7 +26,7 @@ static const int MAX_NOAA_DATA_OLDNESS_SECONDS = 6000;
 ** That script does this:
 ** A line with PCSENSOR_TAG
 ** output of pcsensor program
-** A line with SANDPOINT_TAG
+** A line with NOAA_TAG
 ** output of getReportedTemp script
 ** A line with FURNACE_CGI_TAG
 ** output of furnace.cgi on the furnace controller.
@@ -121,7 +121,7 @@ static const float C7089UCoefficients[][NUM_COLUMNS]=
 
 int main(int argc, char* argv[])
 {
-    enum {START, PCSENSOR, SANDPOINT_AIRPORT_TAG, SANDPOINT_AIRPORT_LINE, 
+    enum {START, PCSENSOR, FIND_NOAA_TAG, NOAA_LINE, 
         FURNACE_CGI, FURNACE_HTML, TEMPERATURES, FINISHED} parseState = START;
 
     int whichFurnaceCgi = 0;
@@ -161,7 +161,7 @@ int main(int argc, char* argv[])
             {
                 streamToOutput << inputLine;
                 pcsensorLine = inputLine;
-                parseState = SANDPOINT_AIRPORT_TAG;
+                parseState = FIND_NOAA_TAG;
             }
             else
             {
@@ -170,12 +170,12 @@ int main(int argc, char* argv[])
             }
             break;
 
-        case SANDPOINT_AIRPORT_TAG:
-            if (inputLine.find(SANDPOINT_TAG) != inputLine.npos)
-                parseState = SANDPOINT_AIRPORT_LINE;
+        case FIND_NOAA_TAG:
+            if (inputLine.find(NOAA_TAG) != inputLine.npos)
+                parseState = NOAA_LINE;
             break;
 
-        case SANDPOINT_AIRPORT_LINE:    // input from NOAA.gov
+        case NOAA_LINE:    // input from NOAA.gov
             {
                 WeatherGov gv(inputLine);
                 std::string airportTemp = gv.airportTemp();
@@ -290,6 +290,11 @@ int main(int argc, char* argv[])
         default:
             break;
         }
+    }
+    if ((parseState == FURNACE_HTML) && (ret == 1))
+    {
+        std::cout << streamToOutput.str() << std::endl;
+        ret = 0;    
     }
     if ((ret != 0) && !pcsensorLine.empty())
         std::cerr << pcsensorLine << std::endl;
