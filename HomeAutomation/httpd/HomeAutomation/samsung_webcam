@@ -1,0 +1,128 @@
+#!/usr/local/bin/perl
+#Copyright (c) 2016 by Wayne Wright, Round Rock, Texas.
+#See license at http://github.com/w5xd/diysha/blob/master/LICENSE.md
+# cgi script that fronts a secured webcam
+# Two main purposes
+# (1) the web server has its own authentication but the samsung camera uses
+# Digest. This module defeats the camera's authentication with hard-coded
+# credentials. The assumption is that the webserver did the security.
+# (2) the Linux "motion" utility silently crashes if its given pictures
+# http://lavrsen.dk/foswiki/bin/view/Motion/MotionGuide
+# with a height or width that is not a multiple of 16. This script
+# takes a "radix" parameter that, if its set to 16, crops the picture
+# to the next lower multiple of 16 in both height and width.
+
+# download and install
+use strict;
+require LWP::UserAgent;
+require Image::Magick;
+
+#parameter
+my $DEBUG = 0;
+#FIXME get the credentials into the system some other way
+my $webcamIp = "10.0.0.40"; 
+my $webcamRealm = "iPolis_00:16:6C:A3:7D:D3"; 
+
+#We're a CGI script.
+#We take arguments. Either as HTTP POST or GET. Find them...
+my $buffer;
+my @pairs;
+my %FORM;
+
+# Read in text
+$ENV{'REQUEST_METHOD'} =~ tr/a-z/A-Z/;
+if ( $ENV{'REQUEST_METHOD'} eq "POST" ) {
+    read( STDIN, $buffer, $ENV{'CONTENT_LENGTH'} );
+}
+else {
+    $buffer = $ENV{'QUERY_STRING'};
+}
+
+# Split information into name/value pairs
+@pairs = split( /&/, $buffer );
+foreach my $pair (@pairs) {
+    ( my $name, my $value ) = split( /=/, $pair );
+    $value =~ tr/+/ /;
+    $value =~ s/%(..)/pack("C", hex($1))/eg;
+    $FORM{$name} = $value;
+}
+
+my $ua;
+
+if ( !defined($ua) ) 
+{
+    $ua = LWP::UserAgent->new; #UserAgent supports Digest
+    $ua->credentials( "$webcamIp:80", $webcamRealm,
+       	"admin", "admin" #FIXME
+	);
+}
+
+my $response = $ua->get(
+	"http://$webcamIp" .
+       	"/cgi-bin/video.cgi?msubmenu=jpg" # http://www.ispyconnect.com/man.aspx?n=Samsung
+);
+
+my $contentType   = $response->header("Content-Type");
+my $contentLength = $response->header("Content-Length");
+my $msgDate       = $response->header("Date");
+my $content       = $response->content;
+
+my $image;
+my $height;
+my $width;
+
+my $origHeight;
+my $origWidth;
+my $origLength;
+my $origImageSize;
+
+if ( defined( $FORM{radix} ) && $FORM{radix} == 16 && $contentType =~ /image/ )
+{
+    $image = Image::Magick->new( magick => 'jpg' );
+    $image->BlobToImage($content);
+    $origImageSize = $image->Get('filesize');
+    $height = $image->Get('height');
+    $width  = $image->Get('width');
+    if ( ( ( $height % 16 ) != 0 ) || ( ( $width % 16 ) != 0 ) ) 
+    {   # I had feared this would be expensive...but it runs along at less than 10% CPU
+        $origHeight = $height;
+        $origWidth  = $width;
+        $origLength = $contentLength;
+        $height -= $height % 16; #adjust to multiple of 16
+        $width  -= $width % 16;
+        $image->Crop( width => $width, height => $height );
+	$image->Set(quality=>50);
+        $content       = $image->ImageToBlob();
+        $contentLength = $image->Get('filesize');
+        $contentType   = "image/jpeg";
+    } #else pass the image along unaltered
+}
+
+if ( $DEBUG == 0 ) {
+    print "Content-Type: " . $contentType . "\r\n" if defined($contentType);
+    print "Content-Length: " . $contentLength . "\r\n"
+      if defined($contentLength);
+    print "Date: " . $msgDate . "\r\n" if defined($msgDate);
+    print "\r\n";
+    print $content;
+}
+else {
+    print "Content-Type: text/html\r\n";
+    print "\r\n";
+    print "<html><head></head>\r\n";
+    print "<body>\r\n";
+    print "Content-Type is " . $contentType;
+    print "<br/>Content-Length is " . $contentLength;
+    print "<br/>radix is " . $FORM{radix};
+    if ( defined($image) ) {
+        print "\r\n<br/>height is " . $height;
+        print "\r\n<br/>width is " . $width;
+        print "\r\n<br/>origHeight is " . $origHeight;
+        print "\r\n<br/>origWidth is " . $origWidth;
+        print "\r\n<br/>origLength is " . $origLength;
+        print "\r\n<br/>origImageSize is " . $origImageSize;
+    }
+    print "<br/>done\r\n";
+    print "</body></html>\r\n";
+}
+
