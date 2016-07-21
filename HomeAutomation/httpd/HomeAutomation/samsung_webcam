@@ -47,15 +47,10 @@ foreach my $pair (@pairs) {
     $FORM{$name} = $value;
 }
 
-my $ua;
-
-if ( !defined($ua) ) 
-{
-    $ua = LWP::UserAgent->new; #UserAgent supports Digest
-    $ua->credentials( "$webcamIp:80", $webcamRealm,
+my $ua = LWP::UserAgent->new; #UserAgent supports Digest
+$ua->credentials( "$webcamIp:80", $webcamRealm,
        	"admin", "admin" #FIXME
 	);
-}
 
 my $response = $ua->get(
 	"http://$webcamIp" .
