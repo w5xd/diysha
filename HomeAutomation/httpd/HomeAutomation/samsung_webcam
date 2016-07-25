@@ -63,6 +63,7 @@ my $msgDate       = $response->header("Date");
 my $content       = $response->content;
 
 my $image;
+$image = undef;
 my $height;
 my $width;
 
@@ -70,6 +71,7 @@ my $origHeight;
 my $origWidth;
 my $origLength;
 my $origImageSize;
+
 
 if ( defined( $FORM{radix} ) && $FORM{radix} == 16 && $contentType =~ /image/ )
 {
@@ -120,4 +122,4 @@ else {
     print "<br/>done\r\n";
     print "</body></html>\r\n";
 }
-
+close STDOUT;
