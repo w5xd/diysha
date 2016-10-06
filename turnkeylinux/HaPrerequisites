@@ -34,9 +34,9 @@ fi
 echo "**** HomeAutomation installing needed apps not in turnkeylinux core"
 # apt-get is the tool used in debian linux distributions. your mileage may vary.
 apt-get --assume-yes install \
-         curl gnuplot-x11 apache2-mpm-worker libapache2-mod-perl2 libyaml-perl \
+         curl gnuplot-x11 apache2 apache2-bin libapache2-mod-perl2 libyaml-perl \
          make g++ bzip2 p7zip-full libexpat1-dev pkg-config git openssl \
-         imagemagick perlmagick apache2-threaded-dev
+         imagemagick perlmagick apache2-threaded-dev libssl-dev
 
 echo "**** HomeAutomation installing postfix. can send email with it"
 # DEBIAN_FRONTEND=noninteractive is so install won't up up a dialog and fail
