@@ -7,6 +7,7 @@ use warnings;
 
 use File::Basename;
 use File::Spec;
+use File::Path qw(make_path);
 
 # setup software install location
 my ($fn, $DIR) = fileparse($0);  #base file specs on location of this script
@@ -20,20 +21,23 @@ my ($fn, $DIR) = fileparse($0);  #base file specs on location of this script
 	define_local::SetEnvironmentVariables( $DIR . '/HouseConfiguration.ini');
 
 	#thermostat and hvac logs need a home. 
-	if (! -d "$DIR/logs") {
-		mkdir "$DIR/logs";
+	if (! -d $ENV{'THERMOSTAT_LOG_LOCATION'}) {
+		make_path($ENV{'THERMOSTAT_LOG_LOCATION'});
+	}
+	if (! -d $ENV{'FURNACE_LOG_LOCATION'}) {
+		make_path($ENV{'FURNACE_LOG_LOCATION'});
 	}
 
-	if (-e "$DIR/../motion") { #motion directory does not appear on Windows...
+	if (-e "$DIR/../motion/startMotion") { #motion directory does not appear on Windows...
 		chdir "$DIR/../motion";
-		system('motion -c motion.conf >motion.log 2>&1 &');
+		system('./startMotion >motion.log 2>&1 &');
 	}
 	
 	chdir "$DIR/routerMonitor";
-	system ('bash monitor >>' . $DIR .'/logs/monitor.log 2>&1  &');
+	system ('bash monitor >>' . $ENV{'THERMOSTAT_LOG_LOCATION'} . '/monitor.log 2>&1  &');
 
 	chdir "$DIR/thermostat";
-	system ('bash monitorThermostat >' . $DIR . '/logs/monitorThermostat.log 2>&1 &');
+	system ('bash monitorThermostat >' .  $ENV{'THERMOSTAT_LOG_LOCATION'} . '/monitorThermostat.log 2>&1 &');
 
 #	chdir  "$DIR/hvac";
 #	system ('bash -c ./monitor');
