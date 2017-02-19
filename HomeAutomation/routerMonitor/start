@@ -30,10 +30,10 @@ my ($fn, $DIR) = fileparse($0);  #base file specs on location of this script
 	}
 	
 	chdir "$DIR/routerMonitor";
-	system ('bash monitor >>monitor.log 2>&1  &');
+	system ('bash monitor >>' . $DIR .'/logs/monitor.log 2>&1  &');
 
 	chdir "$DIR/thermostat";
-	system ('bash monitorThermostat >monitorThermostat.log 2>&1 &');
+	system ('bash monitorThermostat >' . $DIR . '/logs/monitorThermostat.log 2>&1 &');
 
 #	chdir  "$DIR/hvac";
 #	system ('bash -c ./monitor');
