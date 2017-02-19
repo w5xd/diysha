@@ -1,8 +1,14 @@
 #!/bin/bash
-LOGFILEOUT="thermostat_log.txt"
-./processEventLog . $LOGFILEOUT
+if [ ! -d "$THERMOSTAT_LOG_LOCATION" ]; then
+    mkdir "$THERMOSTAT_LOG_LOCATION"
+fi
+LOGFILEOUT=$THERMOSTAT_LOG_LOCATION/"thermostat_log.txt"
+
+#process old logs in root of thermostat log dir
+./processEventLog $THERMOSTAT_LOG_LOCATION $LOGFILEOUT
+
 SUBDIR=`date +"%Y_%m_%d_%H%M%S"`
-SUBDIR="logs_"$SUBDIR
+SUBDIR=$THERMOSTAT_LOG_LOCATION/"logs_"$SUBDIR
 mkdir $SUBDIR
 let CURLOG=1
 while [ $CURLOG -gt 0 ]; do

@@ -1,10 +1,14 @@
 #!/usr/local/bin/perl
 #Copyright (c) 2013 by Wayne Wright, Round Rock, Texas.
 #See license at http://github.com/w5xd/diysha/blob/master/LICENSE.md 
+use lib "../..";
+require define_local;
 use MIME::Base64;
 use IPC::Open2;
 
 my $DEBUG = 0;    #makes only text when nonzero
+
+define_local::SetEnvironmentVariables("../../HouseConfiguration.ini");
 
 #We're a CGI script.
 #We take arguments. Either as HTTP POST or GET. Find them...
@@ -184,8 +188,8 @@ set grid xtics ytics
 show grid
 # plot command last in this script
 plot \\
-   "thermostat/thermostat_log.txt" using 1:4 with linespoints title columnheader, \\
-   "thermostat/thermostat_log.txt" using 1:5 with lines title columnheader, \\
+   "$ENV{'THERMOSTAT_LOG_LOCATION'}/thermostat_log.txt" using 1:4 with linespoints title columnheader, \\
+   "$ENV{'THERMOSTAT_LOG_LOCATION'}/thermostat/thermostat_log.txt" using 1:5 with lines title columnheader, \\
    "hvac/temperature.log" using 1:4 with lines title "deskside", \\
    "hvac/temperature.log" using 1:(\$8 > -90 ? \$8 : 1/0) with lines title "inlet", \\
    "hvac/temperature.log" using 1:(\$9 > -90 ? \$9 : 1/0) with lines title "outlet", \\

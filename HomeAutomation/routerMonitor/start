@@ -1,9 +1,7 @@
 #!/usr/local/bin/perl
-#add this to system startup using
-# sudo crontab -e
-#  Then add @reboot sudo -u <user> <path/to/this/script>
-#  and you might want to start apache from crontab as well,
-#  although its more traditional to start apache from update-rc.d
+#
+#started from /etc/init.d/HomeAutomation
+#
 use strict;
 use warnings;
 
@@ -20,6 +18,11 @@ my ($fn, $DIR) = fileparse($0);  #base file specs on location of this script
 
 	# setup hardware configuration dependencies
 	define_local::SetEnvironmentVariables( $DIR . '/HouseConfiguration.ini');
+
+	#thermostat and hvac logs need a home. 
+	if (! -d "$DIR/logs") {
+		mkdir "$DIR/logs";
+	}
 
 	if (-e "$DIR/../motion") { #motion directory does not appear on Windows...
 		chdir "$DIR/../motion";
