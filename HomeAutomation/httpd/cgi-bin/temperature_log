@@ -1,6 +1,13 @@
-#!/bin/sh
-#Copyright (c) 2013 by Wayne Wright, Round Rock, Texas.
+#!/usr/local/bin/perl
+#Copyright (c) 2017 by Wayne Wright, Round Rock, Texas.
 #See license at http://github.com/w5xd/diysha/blob/master/LICENSE.md 
-echo "Content-type: text/plain; charset=iso-8859-1"
-echo
-tail -n 200 ../../hvac/temperature.log
+use lib "../..";
+require define_local;
+
+define_local::SetEnvironmentVariables("../../HouseConfiguration.ini");
+
+print STDOUT <<Begin_of_output_STDOUT;
+Content-type: text/plain; charset=iso-8859-1
+
+Begin_of_output_STDOUT
+system ('tail -n 200 '. $ENV{'FURNACE_LOG_LOCATION'} . '/temperature.log');
