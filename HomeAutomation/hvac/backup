@@ -1,2 +1,0 @@
-#!/bin/sh
-7z a ../hvac.7z temperature.log relay_events.log poll_events.log

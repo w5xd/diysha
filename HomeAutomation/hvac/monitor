@@ -1,9 +1,13 @@
 #!/bin/bash
 
-#must have defined $FURNACE_IP and $FURNACE_LOGIN
-./poll_events poll_events.log relay_events.log 2>poll_events_err.txt &
+#must have defined $FURNACE_IP and $FURNACE_LOGIN and $FURNACE_LOG_LOCATION
+./poll_events $FURNACE_LOG_LOCATION/poll_events.log $FURNACE_LOG_LOCATION/relay_events.log 2>$FURNACE_LOG_LOCATION/poll_events_err.txt &
 P2=$!
 echo "Started $P2"
-echo -e "#!/bin/bash\nkill $P2\n\
-	export FURNACE_IP='$FURNACE_IP'\nexport FURNACE_LOGIN='$FURNACE_LOGIN'"\
-       	> stop_last_monitor.sh
+echo -e "#!/bin/bash\n\
+	cwd `pwd`\n\
+	kill $P2\n\
+	export FURNACE_IP='$FURNACE_IP'\n\
+        export FURNACE_LOGIN='$FURNACE_LOGIN'\n\
+	export FURNACE_LOG_LOCATION='$FOURCE_LOG_LOCATION'"\
+       	> $FURNACE_LOG_LOCATION/stop_last_monitor.sh

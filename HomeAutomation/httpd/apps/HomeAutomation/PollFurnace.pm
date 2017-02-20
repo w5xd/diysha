@@ -5,6 +5,7 @@ use strict;
 use IPC::Open2;
 use threads;
 use threads::shared;
+use AppConfig;
 require HomeAutomation::Config;
 
 my $DEBUG = 1;
@@ -14,8 +15,21 @@ my $started : shared;
 sub backgroundThread {
     my $dir = shift;    # hvac directory
     chdir $dir;
-    unlink 'combine_inputs_err.txt', 'procFurnace_err.txt',
-      'check_set_eheat_out.txt';
+    my $houseConfig = AppConfig->new({
+		    CREATE => 1,
+		    CASE => 1,
+		    GLOBAL => {
+			    ARGCOUNT => AppConfig::ARGCOUNT_ONE,
+		    },
+	    });
+    my $iCfgFileName =
+     $ENV{HTTPD_LOCAL_ROOT} . "/../HouseConfiguration.ini";
+    $houseConfig->file($iCfgFileName);
+    my %houseconfigVars = $houseConfig->varlist("^BASH_", 1);
+    my $hvacLogDir = $houseConfigVars{'FURNACE_LOG_LOCATION'};
+    unlink $hvacLogDir.'/combine_inputs_err.txt',
+      $hvacLogDir.'/procFurnace_err.txt',
+      $hvacLogDir.'/check_set_eheat_out.txt';
     &HomeAutomation::Config::initialize(1);
     if ($DEBUG) {
         print STDERR "PollFurnace::backgroundThread at "
@@ -41,7 +55,8 @@ sub backgroundThread {
           ";export FURNACE_LOGIN=\"$HomeAutomation::Config::FURNACE_LOGIN\"";
         $cmd .= ";./combine_inputs \"$HomeAutomation::Config::WEATHER_URL\" ";
         $cmd .=
-          "2>>combine_inputs_err.txt | ./procFurnace 2>>procFurnace_err.txt";
+          "2>>".$hvacLogDir."/combine_inputs_err.txt | ./procFurnace 2>>".
+	   $hvacLogDir."/procFurnace_err.txt";
         my $pid = open2( \*cmdResHandle, $cmdInHandle, 'bash', '-c', $cmd );
         my $lineOut;
         my $buf;
@@ -54,7 +69,7 @@ sub backgroundThread {
             $lineOut = "";
             foreach (@args) { $lineOut .= $_ . ' '; }
             my $logf;
-            open( $logf, ">>", "temperature.log" );
+            open( $logf, ">>", $hvacLogDir."/temperature.log" );
             print $logf $lineOut . "\n";
             close($logf);
 
@@ -67,7 +82,7 @@ sub backgroundThread {
             $cmd .=
 ";export FURNACE_LOGIN=\"$HomeAutomation::Config::FURNACE_LOGIN\";";
             foreach (@args) { $cmd .= $_ . ' '; }
-            $cmd .= ">> check_set_eheat_out.txt 2>&1";
+            $cmd .= ">> ".$hvacLogDir."/check_set_eheat_out.txt 2>&1";
             system "bash", "-c", $cmd;
 
             #          print STDERR "PollFurnace command: ". $cmd . "\n";

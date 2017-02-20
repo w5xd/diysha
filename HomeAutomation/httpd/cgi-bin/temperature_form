@@ -190,16 +190,16 @@ show grid
 plot \\
    "$ENV{'THERMOSTAT_LOG_LOCATION'}/thermostat_log.txt" using 1:4 with linespoints title columnheader, \\
    "$ENV{'THERMOSTAT_LOG_LOCATION'}/thermostat/thermostat_log.txt" using 1:5 with lines title columnheader, \\
-   "hvac/temperature.log" using 1:4 with lines title "deskside", \\
-   "hvac/temperature.log" using 1:(\$8 > -90 ? \$8 : 1/0) with lines title "inlet", \\
-   "hvac/temperature.log" using 1:(\$9 > -90 ? \$9 : 1/0) with lines title "outlet", \\
-   "hvac/temperature.log" using 1:5 with lines title "outside", \\
-   "hvac/temperature.log" using 1:(\$7 > -90 ? \$7 : 1/0) with lines title "out(hp)", \\
-   "hvac/weather_gov.log" using 1:(\$4 < 3720 ? \$3 : 1/0) with lines title "airport", \\
-   "hvac/temperature.log" using 1:(\$6 > -90 ? \$6 : 1/0) with lines title "airport", \\
-   "thermostat/thermostat_log.txt" using 1:(\$7 > 1 ? \$7 : 1/0) axis x1y2 with linespoints title "hvac", \\
-   "hvac/poll_events.log" using 2:(\$5 > 1 ? \$5 : 1/0) axis x1y2 with linespoints title "opto", \\
-   "hvac/relay_events.log" using 2:(\$5 > 1 ? \$5 : 1/0) axis x1y2 with linespoints title "relay"
+   "$ENV{'FURNACE_LOG_LOCATION'}/temperature.log" using 1:4 with lines title "deskside", \\
+   "$ENV{'FURNACE_LOG_LOCATION'}/temperature.log" using 1:(\$8 > -90 ? \$8 : 1/0) with lines title "inlet", \\
+   "$ENV{'FURNACE_LOG_LOCATION'}/temperature.log" using 1:(\$9 > -90 ? \$9 : 1/0) with lines title "outlet", \\
+   "$ENV{'FURNACE_LOG_LOCATION'}/temperature.log" using 1:5 with lines title "outside", \\
+   "$ENV{'FURNACE_LOG_LOCATION'}/temperature.log" using 1:(\$7 > -90 ? \$7 : 1/0) with lines title "out(hp)", \\
+   "$ENV{'FURNACE_LOG_LOCATION'}/weather_gov.log" using 1:(\$4 < 3720 ? \$3 : 1/0) with lines title "airport", \\
+   "$ENV{'FURNACE_LOG_LOCATION'}/temperature.log" using 1:(\$6 > -90 ? \$6 : 1/0) with lines title "airport", \\
+   "$ENV{'THERMOSTAT_LOG_LOCATION'}/thermostat_log.txt" using 1:(\$7 > 1 ? \$7 : 1/0) axis x1y2 with linespoints title "hvac", \\
+   "$ENV{'FURNACE_LOG_LOCATION'}/poll_events.log" using 2:(\$5 > 1 ? \$5 : 1/0) axis x1y2 with linespoints title "opto", \\
+   "$ENV{'FURNACE_LOG_LOCATION'}/relay_events.log" using 2:(\$5 > 1 ? \$5 : 1/0) axis x1y2 with linespoints title "relay"
    exit
    
 gnuplot_Commands2_done
