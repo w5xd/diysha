@@ -25,7 +25,7 @@ sub backgroundThread {
     $ENV{HTTPD_LOCAL_ROOT} . "/../HouseConfiguration.ini";
     $houseConfig->file($iCfgFileName);
     my %houseconfigVars = $houseConfig->varlist("^BASH_", 1);
-    my $hvacLogDir = $houseConfigVars{'FURNACE_LOG_LOCATION'};
+    my $hvacLogDir = $houseconfigVars{'FURNACE_LOG_LOCATION'};
     unlink $hvacLogDir.'/combine_inputs_err.txt',
       $hvacLogDir.'/procFurnace_err.txt',
       $hvacLogDir.'/check_set_eheat_out.txt';
