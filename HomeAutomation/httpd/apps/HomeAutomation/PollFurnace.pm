@@ -6,7 +6,6 @@ use IPC::Open2;
 use threads;
 use threads::shared;
 use AppConfig;
-require HomeAutomation::Config;
 
 my $DEBUG = 1;
 
@@ -23,21 +22,22 @@ sub backgroundThread {
 		    },
 	    });
     my $iCfgFileName =
-     $ENV{HTTPD_LOCAL_ROOT} . "/../HouseConfiguration.ini";
+    $ENV{HTTPD_LOCAL_ROOT} . "/../HouseConfiguration.ini";
     $houseConfig->file($iCfgFileName);
     my %houseconfigVars = $houseConfig->varlist("^BASH_", 1);
     my $hvacLogDir = $houseConfigVars{'FURNACE_LOG_LOCATION'};
     unlink $hvacLogDir.'/combine_inputs_err.txt',
       $hvacLogDir.'/procFurnace_err.txt',
       $hvacLogDir.'/check_set_eheat_out.txt';
-    &HomeAutomation::Config::initialize(1);
     if ($DEBUG) {
         print STDERR "PollFurnace::backgroundThread at "
           . $dir
           . " and with temp "
-          . &HomeAutomation::Config::HEATPUMP_MIN_TEMPERATURE_F()
-          . " and with login: "
-          . $HomeAutomation::Config::FURNACE_LOGIN
+          . $houseconfigVars{'HEATPUMP_MIN_TEMPERATURE_F'}
+          . "\n and with login: "
+          . $houseconfigVars{'FURNACE_LOGIN'}
+	  . " and with log dir: "
+	  . $houseconfigVars{'FURNACE_LOG_LOCATION'}
           . " and HTTPD_LOCAL_ROOT "
           . $ENV{HTTPD_LOCAL_ROOT} . "\n";
     }
@@ -50,20 +50,22 @@ sub backgroundThread {
     for ( my $pollCount = 0 ; $pollCount >= 0 ; ) {
         my $cmdInHandle;
         my $cmd = "";
-        $cmd .= "export FURNACE_IP=\"$HomeAutomation::Config::FURNACE_IP\"";
+        $cmd .= "export FURNACE_IP=\"$houseconfigVars{'FURNACE_IP'}\"";
         $cmd .=
-          ";export FURNACE_LOGIN=\"$HomeAutomation::Config::FURNACE_LOGIN\"";
-        $cmd .= ";./combine_inputs \"$HomeAutomation::Config::WEATHER_URL\" ";
+          ";export FURNACE_LOGIN=\"$houseconfigVars{'FURNACE_LOGIN'}\"";
+        $cmd .= ";./combine_inputs \"$houseconfigVars{'WEATHER_URL'}\" ";
         $cmd .=
           "2>>".$hvacLogDir."/combine_inputs_err.txt | ./procFurnace 2>>".
 	   $hvacLogDir."/procFurnace_err.txt";
+	if ($DEBUG) {
+		print STDERR "PollFurnace command: \"". $cmd . "\n";
+	}
         my $pid = open2( \*cmdResHandle, $cmdInHandle, 'bash', '-c', $cmd );
         my $lineOut;
         my $buf;
         while ( read( cmdResHandle, $buf, 60 * 57 ) ) { $lineOut .= $buf; }
         waitpid( $pid, 0 );
 
-        #      print STDERR "PollFurnace got " . $lineOut;
         if ( $lineOut != "" ) {
             my @args = split( ' ', $lineOut );    #convert tabs to spaces
             $lineOut = "";
@@ -75,17 +77,19 @@ sub backgroundThread {
 
             $args[2] = '"' . $args[2] . '"';      #wrap parens
             unshift( @args,
-                &HomeAutomation::Config::HEATPUMP_MIN_TEMPERATURE_F() );
+                $houseconfigVars{'HEATPUMP_MIN_TEMPERATURE_F'} );
             unshift( @args, "./check_set_eheat" );
             $cmd = "";
-            $cmd .= "export FURNACE_IP=\"$HomeAutomation::Config::FURNACE_IP\"";
+            $cmd .= "export FURNACE_IP=\"$houseconfigVars{'FURNACE_IP'}\"";
             $cmd .=
-";export FURNACE_LOGIN=\"$HomeAutomation::Config::FURNACE_LOGIN\";";
+";export FURNACE_LOGIN=\"$houseconfigVars{'FURNACE_LOGIN'}\";";
             foreach (@args) { $cmd .= $_ . ' '; }
             $cmd .= ">> ".$hvacLogDir."/check_set_eheat_out.txt 2>&1";
+	    if ($DEBUG) {
+		print STDERR "PollFurnace command: \"". $cmd . "\n";
+	    }
             system "bash", "-c", $cmd;
 
-            #          print STDERR "PollFurnace command: ". $cmd . "\n";
             sleep 3 * 60;    # 3 minutes
         }
         else { sleep 15; }

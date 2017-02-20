@@ -9,5 +9,5 @@ echo -e "#!/bin/bash\n\
 	kill $P2\n\
 	export FURNACE_IP='$FURNACE_IP'\n\
         export FURNACE_LOGIN='$FURNACE_LOGIN'\n\
-	export FURNACE_LOG_LOCATION='$FOURCE_LOG_LOCATION'"\
+	export FURNACE_LOG_LOCATION='$FURNACE_LOG_LOCATION'"\
        	> $FURNACE_LOG_LOCATION/stop_last_monitor.sh
