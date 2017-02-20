@@ -136,7 +136,8 @@ function copySelectToInput (element){
     classBox.value = optionValues[1 + optidx];
     var fanBox = document.getElementById("isFanID");
     var selText = option.text;
-    fanBox.value = (selText.indexOf(" (Fan)") == selText.length - 6) ? "yes" : "no";
+    var FanIndex = selText.indexOf(" (Fan)");
+    fanBox.value = ((FanIndex >= 0) && (FanIndex == selText.length - 6)) ? "yes" : "no";
 }
 //-->
 </script>    
