@@ -7,7 +7,7 @@ use threads;
 use threads::shared;
 use AppConfig;
 
-my $DEBUG = 1;
+my $DEBUG = 0;
 
 my $started : shared;
 
