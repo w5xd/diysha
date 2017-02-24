@@ -189,14 +189,13 @@ show grid
 # plot command last in this script
 plot \\
    "$ENV{'THERMOSTAT_LOG_LOCATION'}/thermostat_log.txt" using 1:4 with linespoints title columnheader, \\
-   "$ENV{'THERMOSTAT_LOG_LOCATION'}/thermostat/thermostat_log.txt" using 1:5 with lines title columnheader, \\
-   "$ENV{'FURNACE_LOG_LOCATION'}/temperature.log" using 1:4 with lines title "deskside", \\
-   "$ENV{'FURNACE_LOG_LOCATION'}/temperature.log" using 1:(\$8 > -90 ? \$8 : 1/0) with lines title "inlet", \\
-   "$ENV{'FURNACE_LOG_LOCATION'}/temperature.log" using 1:(\$9 > -90 ? \$9 : 1/0) with lines title "outlet", \\
-   "$ENV{'FURNACE_LOG_LOCATION'}/temperature.log" using 1:5 with lines title "outside", \\
-   "$ENV{'FURNACE_LOG_LOCATION'}/temperature.log" using 1:(\$7 > -90 ? \$7 : 1/0) with lines title "out(hp)", \\
+   "$ENV{'THERMOSTAT_LOG_LOCATION'}/thermostat_log.txt" using 1:5 with lines title columnheader, \\
+   "$ENV{'FURNACE_LOG_LOCATION'}/pcsensor.log" using 1:4 with lines title "deskside", \\
+   "$ENV{'FURNACE_LOG_LOCATION'}/modtronix.log" using 1:4 with lines title "inlet", \\
+   "$ENV{'FURNACE_LOG_LOCATION'}/modtronix.log" using 1:5 with lines title "outlet", \\
+   "$ENV{'FURNACE_LOG_LOCATION'}/pcsensor.log" using 1:5 with lines title "outside", \\
+   "$ENV{'FURNACE_LOG_LOCATION'}/modtronix" using 1:3 with lines title "out(hp)", \\
    "$ENV{'FURNACE_LOG_LOCATION'}/weather_gov.log" using 1:(\$4 < 3720 ? \$3 : 1/0) with lines title "airport", \\
-   "$ENV{'FURNACE_LOG_LOCATION'}/temperature.log" using 1:(\$6 > -90 ? \$6 : 1/0) with lines title "airport", \\
    "$ENV{'THERMOSTAT_LOG_LOCATION'}/thermostat_log.txt" using 1:(\$7 > 1 ? \$7 : 1/0) axis x1y2 with linespoints title "hvac", \\
    "$ENV{'FURNACE_LOG_LOCATION'}/poll_events.log" using 2:(\$5 > 1 ? \$5 : 1/0) axis x1y2 with linespoints title "opto", \\
    "$ENV{'FURNACE_LOG_LOCATION'}/relay_events.log" using 2:(\$5 > 1 ? \$5 : 1/0) axis x1y2 with linespoints title "relay"

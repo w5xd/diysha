@@ -1,9 +1,11 @@
+#include <time.h>
 #include <iostream>
 #include <cstdlib>
 #include <sstream>
 #include <string>
 #include <cstring>
 #include <map>
+#include <vector>
 #include <ios>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
@@ -121,14 +123,46 @@ static const float C7089UCoefficients[][NUM_COLUMNS]=
 
 int main(int argc, char* argv[])
 {
-    enum {START, PCSENSOR, FIND_NOAA_TAG, NOAA_LINE, 
+    enum State_t {START, PCSENSOR, FIND_NOAA_TAG, NOAA_LINE, 
         FURNACE_CGI, FURNACE_HTML, TEMPERATURES, FINISHED} parseState = START;
+
+    std::map<int, int> nextState;
+    nextState[(int)PCSENSOR] = (int)FIND_NOAA_TAG;
+    nextState[(int)NOAA_LINE] = (int)FURNACE_CGI;
 
     int whichFurnaceCgi = 0;
 
-    if ((argc < 1) || (argc > 1))
+    bool skipPcsensor = false;
+    bool skipWeatherGov = false;
+    bool skipFurnace = false;
+
+    std::vector<std::string> args;
+    for (int j = 1; j < argc; j++)
+        args.push_back(argv[j]);
+
+    for (int j = args.size() - 1; j >= 0; j--)
     {
-        std::cerr << "Usage: procFurnace" << std::endl;
+       if (args[j] == "-sp")
+       {
+             skipPcsensor = true;
+             args.erase(args.begin() + j);
+       }
+       else if (args[j] == "-sw")
+       {
+            skipWeatherGov = true;
+            args.erase(args.begin() + j);
+       }
+       else if (args[j] == "-sf")
+       {
+            skipFurnace = true;
+            args.erase(args.begin() + j);
+       }
+    }
+
+    if (!args.empty())
+    {
+        std::cerr << "Usage: procFurnace [-sp] [-sw] [-sf]" << std::endl << 
+          "-sp means skips pcsensor, -sw means skip weather gov and -sf means skip furnace." << std::endl;
         return 1;
     }
 
@@ -147,6 +181,32 @@ int main(int argc, char* argv[])
     memset(&adcValues[0], 0, sizeof(adcValues));
     int adcSamples[NUM_FURNACE_TEMPERATURE_CHANNELS];
     memset(&adcSamples[0], 0, sizeof(adcSamples));
+
+    if (skipFurnace)
+        nextState[(int)NOAA_LINE] = (int)FINISHED; // my prev goes to my next
+
+    if (skipWeatherGov)
+        nextState[(int)PCSENSOR] = nextState[(int)NOAA_LINE]; // ditto
+
+    if (skipPcsensor)
+    {
+        struct tm *local;
+        time_t t;
+        t = time(NULL);
+        local = localtime(&t);
+        char buf[80];
+            sprintf(buf, "%04d/%02d/%02d\t%02d:%02d:%02d", 
+                local->tm_year +1900, 
+                local->tm_mon + 1, 
+                local->tm_mday,
+                local->tm_hour,
+                local->tm_min,
+                local->tm_sec);
+         streamToOutput << buf;
+         pcsensorLine = buf;
+         parseState = (State_t)nextState[(int)PCSENSOR];
+    }
+
     while (std::getline(std::cin, inputLine))
     {
         switch (parseState)
@@ -159,9 +219,9 @@ int main(int argc, char* argv[])
         case PCSENSOR:  // input from the USB temperature sensor
             if (inputLine.find("Temperature(F)") != inputLine.npos)
             {
-                streamToOutput << inputLine;
+                streamToOutput << inputLine;  // minus the newline
                 pcsensorLine = inputLine;
-                parseState = FIND_NOAA_TAG;
+                parseState = (State_t)nextState[(int)PCSENSOR];
             }
             else
             {
@@ -195,7 +255,7 @@ int main(int argc, char* argv[])
                 streamToOutput << "\t" << airportTemp;
                 pcsensorLine += std::string("\t") + airportTemp;
             }
-            parseState = FURNACE_CGI;
+            parseState = (State_t)nextState[NOAA_LINE];
             break;
 
         case FURNACE_CGI:

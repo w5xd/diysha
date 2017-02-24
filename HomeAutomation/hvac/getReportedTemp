@@ -1,74 +1,13 @@
-#!/usr/local/bin/perl -w
+#!/usr/local/bin/perl -w -I..
 
 # perl program to call the forecast.weather.gov for lat/lon URL at first arg
-# and parse the "current observations" temperature and time stamp to our stdout
-#
-# perl -MCPAN -e shell
-# install XML::Parser
 
 use strict;
-use XML::Parser;
-use LWP::Simple;    # used to fetch the URL
+use hvac::WeatherGov;
 
-my $level     = 0;
-my $timeLabel;
-my $temperature;
-my $url       = shift;    # URL is first argument to this script
+my $url = shift;    # URL is first argument to this script
 
-# list of XML tags we're looking for in order of nesting
-my @tags_seen;
-
-my $sp_forecast = get("$url");
-die "url fetch failed" unless defined $sp_forecast;
-
-my $parser = new XML::Parser(
-    Handlers => {         # Creates our parser object
-        Start   => \&hdl_start,
-        End     => \&hdl_end,
-        Char    => \&hdl_char,
-        Default => \&hdl_def,
-    }
-);
-
-#start calling us back...
-$parser->parse($sp_forecast);
-
-if (!defined $timeLabel) {
-print STDERR "getReportedTemp: No Time Label\n";
-} elsif (!defined $temperature) {
-print STDERR "getReportedTemp: No Temperature\n";
-} else { print STDOUT $temperature." Fahrenheit ".$timeLabel."\n";}
-exit 0;
-
-# The Handlers
-sub hdl_start {
-    my ( $p, $elt, %atts ) = @_;
-    my $key;
-    my $value;
-    $level += 1;
-#    print STDERR "hdl_start " . $elt . "\n";
-    push( @tags_seen, $elt );
-}
-
-sub hdl_def { }
-
-#count the levels.
-sub hdl_end {
-    my ( $p, $elt ) = @_;
-    $level = $level - 1;
-    pop(@tags_seen);
-}
-
-sub hdl_char {
-    my ( $p, $str ) = @_;
-#    print STDERR "hdl_chr level:". $level . "str:" . $str . "\n";
-    if (($level > 0) && ($tags_seen[0] eq "current_observation"))
-    {
-        if ($level == 2)
-        {
-	    if ($tags_seen[1] eq "temp_f") { $temperature = $str; }
-            elsif ($tags_seen[1] eq "observation_time_rfc822") {$timeLabel = $str;}
-        }
-    }
-}
-
+my $obj = hvac::WeatherGov->new($url);
+$obj->acquireTemperature();
+$obj->printWeatherGov();
+1;

@@ -14,11 +14,12 @@ my ($fn, $DIR) = fileparse($0);  #base file specs on location of this script
 	($fn, $DIR) = fileparse(substr($DIR,0,-1));
         $DIR = substr($DIR, 0, -1); 
         $DIR = File::Spec->rel2abs($DIR);
-
+        $ENV{HTTPD_LOCAL_ROOT} = $DIR . "/httpd";
 	require $DIR . '/define_local.pm';
 
 	# setup hardware configuration dependencies
-	define_local::SetEnvironmentVariables( $DIR . '/HouseConfiguration.ini');
+        my $houseConfigPath = $DIR . '/HouseConfiguration.ini';
+	define_local::SetEnvironmentVariables( $houseConfigPath);
 
 	#thermostat and hvac logs need a home. 
 	if (! -d $ENV{'THERMOSTAT_LOG_LOCATION'}) {
@@ -39,7 +40,9 @@ my ($fn, $DIR) = fileparse($0);  #base file specs on location of this script
 	chdir "$DIR/thermostat";
 	system ('bash monitorThermostat >' .  $ENV{'THERMOSTAT_LOG_LOCATION'} . '/monitorThermostat.log 2>&1 &');
 
-#	chdir  "$DIR/hvac";
-#	system ('bash -c ./monitor');
-
+	chdir  "$DIR/hvac";
+	system ('bash -c ./monitor');
+	
+        chdir  "$DIR/sensorMonitor";
+	system ('/usr/local/bin/perl -w -I.. monitorSensors '. $houseConfigPath.' >' . $ENV{FURNACE_LOG_LOCATION} . '/sensorMonitor.log 2>&1 &');
 

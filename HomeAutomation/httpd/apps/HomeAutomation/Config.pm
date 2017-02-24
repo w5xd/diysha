@@ -10,7 +10,6 @@ our $THERMOSTAT_IP :shared;
 our $ROUTER_IP : shared;
 our $FURNACE_IP : shared;
 our $FURNACE_LOGIN : shared;
-our $WEATHER_URL : shared ;
 
 my $local_HEATPUMP_MIN_TEMPERATURE_F : shared ; 
 
@@ -81,7 +80,6 @@ sub initialize {
     $FURNACE_LOGIN  = $vars{FURNACE_LOGIN};
     $local_HEATPUMP_MIN_TEMPERATURE_F = $vars{HEATPUMP_MIN_TEMPERATURE_F}; 
     &HEATPUMP_MIN_TEMPERATURE_F($local_HEATPUMP_MIN_TEMPERATURE_F) if ($oneTimeFlag);
-    $WEATHER_URL  =$vars{WEATHER_URL};
 }
 
 1;

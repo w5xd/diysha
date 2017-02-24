@@ -58,6 +58,7 @@ install HTML::FromANSI
 install XML::Parser
 install AppConfig
 install Switch
+install Math::Round
 endOfCPANcommands
 
 echo "**** HomeAutomation downloading boost"

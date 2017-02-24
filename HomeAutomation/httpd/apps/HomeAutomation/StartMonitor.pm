@@ -11,7 +11,6 @@ use Digest::MD5 qw(md5_hex);
 use Apache2::Const -compile => qw(OK);
 require PowerLineModule::Modem;
 require HomeAutomation::LightSchedule;
-require HomeAutomation::PollFurnace;
 require HomeAutomation::HouseConfigurationInsteon;
 require HomeAutomation::AllMonitor;
 require HomeAutomation::WaterLeakMonitor;
@@ -302,7 +301,6 @@ sub handler {
             $bck->detach();
         }
     }
-    &HomeAutomation::PollFurnace::start($hvacDir);
     $r->puts("\n");
     $r->puts( "Call to openPowerLineModem.\n Got "
           . $Modem->openOk() . ", "
