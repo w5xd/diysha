@@ -62,13 +62,13 @@ sub poll {
                 $line = "";
                 foreach (@splitLine) { $line .= $_ . ' '; }
                 my $fn = $self->{_vars}->{FURNACE_LOG_LOCATION}
-                  . "/wirelessThermostat$nodeId.log";
+                  . "/wirelessThermometer$nodeId.log";
                 open( my $fh, ">>", $fn );
                 print $fh $line . "\n";
                 close $fh;
             }
             else {
-                print STDERR "bad line from Gateway: " . $line . "\n";
+                print STDERR "unprocessed line from Gateway: " . $line . "\n";
             }
         }
     }
