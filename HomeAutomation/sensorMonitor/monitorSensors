@@ -13,6 +13,7 @@ use AppConfig;
 require hvac::PollWeatherGov;
 require hvac::PollPcsensor;
 require hvac::PollModtronix;
+require hvac::PollWirelessGateway;
 
 my $HouseConfFileName = shift;
 
@@ -42,7 +43,7 @@ my @eventprocs;    # who wants to see the results
 my $key;
 my $value;
 while ( ( $key, $value ) = each(%vars) ) {
-    my @v = split( ' ', $value, 2 );
+    my @v = split( ' ', $value );
     if ( $key eq "WEATHERGOV" ) {
         croak "two arguments required for WEATEHRGOV" if scalar @v < 2;
         push( @waitTime,   shift @v );
@@ -63,6 +64,13 @@ while ( ( $key, $value ) = each(%vars) ) {
         push( @waitedTime, 0 );
         unshift( @v, \%bashVars );
         push( @tasks, hvac::PollModtronix->new(@v) );
+    }
+    elsif ( $key eq "WIRELESSGATEWAY" ) {
+        croak "At least two arguments required for WIRELESSGATEWAY" if scalar @v < 2;
+        push( @waitTime,   shift @v );
+        push( @waitedTime, 0 );          #arrange to poll once on startup
+        unshift( @v, \%bashVars );
+        push( @tasks, hvac::PollWirelessGateway->new(@v) );
     }
 }
 

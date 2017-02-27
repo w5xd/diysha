@@ -1,0 +1,70 @@
+# perl class to call the pcsensor USB device
+
+package hvac::PollWirelessGateway;
+
+use strict;
+
+sub new {
+    my $class = shift;
+    my $self = { _vars => shift,
+                 _commPort => shift };
+    my %nodeList;
+    foreach (@_) { $nodeList{$_} = 1;}
+    my $self->{_nodeList} =\%nodeList; #remainder of arguments are nodes to check for eheat
+    bless $self, $class;
+    return $self;
+}
+
+sub poll {
+    my $self = shift;
+    my $log  = $self->{_vars}->{FURNACE_LOG_LOCATION};
+    my $cmd =
+        $ENV{HTTPD_LOCAL_ROOT}
+      . "/../hvac/procWirelessGateway " . $self->{_commPort} . " GET"  ;
+    my $toDelete;
+    my ( $my_reader, $my_writer );
+    my $pid = IPC::Open2::open2( $my_reader, $my_writer, $cmd );
+    $my_writer->autoflush(1);
+    $my_reader->autoflush(1);
+    close $my_writer;
+    #format looks like:
+#3 2017/02/26 21:13:27  65.62 262 -72 123
+#4 2017/02/26 21:14:11  71.92 283 -85 80
+#Found delete: 31
+    while( my $line = <$my_reader>)  {   
+       if ($line ~= /^Found delete:\s/) {
+	      $toDelete = substr($line,14);
+	      last;
+       }
+       else {
+		my @splitLine = split( ' ', $line );
+		if (scalar @splitLine == 7)
+		{
+			$nodeId = shift @splitLine;
+   #append processed result to temperature file
+    $self->{_lastTemperature} = $splitLine[2];
+    $line = "";
+    foreach (@args) { $line .= $_ . ' '; }
+    my $fn = $self->{_vars}->{FURNACE_LOG_LOCATION}."/wirelessThermostat$nodeId.log";
+    open (my $fh, ">>", $fn);
+    print $fh $line."\n";
+    close $fh;
+		}
+		else {
+		print STDERR "bad line from Gateway: " . $line . "\n";}
+       }
+    }    
+    close $my_reader;
+    waitpid($pid, 0);
+
+     return 1;
+}
+
+sub notifyTemperature {
+    my $self = shift;
+    my $who  = shift;  
+    return $who->temperatureEvent( $self->{_lastTemperature}, "WIRELESSGATEWAY" );
+}
+
+1;
+
