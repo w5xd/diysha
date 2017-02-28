@@ -34,8 +34,8 @@ sub poll {
       my $fn = $self->{_vars}->{FURNACE_LOG_LOCATION}."/pcsensor.log";
       open (my $fh, ">>", $fn);
       print $fh $lineout."\n";
+      close $fh;
     }
-    close $fh;
     return 1;
 }
 
