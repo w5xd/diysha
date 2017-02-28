@@ -25,14 +25,16 @@ sub poll {
     my $lineout = <$my_reader>;
     close $my_reader;
     waitpid($pid, 0);
-    #append processed result to temperature file
-    my @args = split( ' ', $lineout );    #convert tabs to spaces
-    $self->{_lastTemperature} = $args[4];
-    $lineout = "";
-    foreach (@args) { $lineout .= $_ . ' '; }
-    my $fn = $self->{_vars}->{FURNACE_LOG_LOCATION}."/pcsensor.log";
-    open (my $fh, ">>", $fn);
-    print $fh $lineout."\n";
+    if (defined $lineout) {
+      #append processed result to temperature file
+      my @args = split( ' ', $lineout );    #convert tabs to spaces
+      $self->{_lastTemperature} = $args[4];
+      $lineout = "";
+      foreach (@args) { $lineout .= $_ . ' '; }
+      my $fn = $self->{_vars}->{FURNACE_LOG_LOCATION}."/pcsensor.log";
+      open (my $fh, ">>", $fn);
+      print $fh $lineout."\n";
+    }
     close $fh;
     return 1;
 }
