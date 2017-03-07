@@ -40,9 +40,10 @@ my %pagesLoaded;
 
 print "My URL is: \"", $d->url, "\"\n";
 
+#because the daemon doesn't time out the keepalive
+#mechanism, we only get one client...
 while ( my $c = $d->accept ) {
     while ( my $r = $c->get_request ) {
-	$c->force_last_request();
         my $path = $r->uri->path;
         print STDERR "path: $path\n";
         my $page = $webpages{$path};
