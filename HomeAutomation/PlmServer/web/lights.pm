@@ -248,7 +248,7 @@ if ($DEBUG) {
     $msg .= "TESTING: " . @DimmerAddrs . "<br/>\n";
 }
 my $colorString = "";
-my $i           = 0;
+$i           = 0;
 foreach (@DimmerVals) {
     if ( defined( $DimmerPagePos[$i] ) ) {
         $colorString .= $DimmerPagePos[$i] . " ";
@@ -282,7 +282,7 @@ else {
     binmode AnnotatedGif;
     my $buf;
     while ( read( AnnotatedGif, $buf, 60 * 57 ) ) {
-        $msg .= encode_base64($buf);
+        $msg .= MIME::Base64::encode_base64($buf);
     }
 
     $msg .=<<Form_print_done5;
