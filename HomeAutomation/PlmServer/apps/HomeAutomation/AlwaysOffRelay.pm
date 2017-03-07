@@ -9,7 +9,7 @@ require HomeAutomation::BaseRelay;
 use strict;
 our @ISA = qw(HomeAutomation::BaseRelay);
 
-my $DEBUG = 1;
+my $DEBUG = 0;
 
 sub new {
      print STDERR "new AlwaysOffRelay\n" if $DEBUG;

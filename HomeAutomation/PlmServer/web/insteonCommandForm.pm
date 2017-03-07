@@ -1,8 +1,23 @@
-#!/usr/local/bin/perl
-#Copyright (c) 2013 by Wayne Wright, Round Rock, Texas.
+#Copyright (c) 2017 by Wayne Wright, Round Rock, Texas.
 #See license at http://github.com/w5xd/diysha/blob/master/LICENSE.md
 use strict;
+use HTTP::Status qw(:constants);
 use HomeAutomation::HouseConfigurationInsteon;
+package web::insteonCommandForm;
+
+#parameters are self, http connection and request
+sub process_request {
+	my $self = shift;
+	my $c = shift;
+	my $r = shift;
+
+	my $method = $r->method;
+	$method =~ tr/a-z/A-Z/;	
+	if ($method ne "GET")
+	{
+	    $c->send_error(HTTP::Status::HTTP_FORBIDDEN);
+	    return;
+	}
 
 my $DEBUG = 0;
 my $iVars = HomeAutomation::HouseConfigurationInsteon->new();
@@ -78,8 +93,7 @@ foreach my $key ( keys %{ $iVars->x10Ids() } ) {
           $curPushIdx++;    #duplicate LightsPageOrder settings are lost
     }
 }
-print STDOUT "Content-type: text/html\r\n\r\n";
-print STDOUT <<htmlText1End
+my $msg =<<htmlText1End
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Frameset//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd">
 <html>
 <head>
@@ -91,10 +105,10 @@ htmlText1End
 my @sortedKeys = sort { $a <=> $b } ( keys %sortHash);
 foreach my $k ( @sortedKeys )  {
     my $idx = $sortHash{$k};
-    print STDOUT '"' . $DimmerAddrs[$idx] . '", "' . $DimmerClasses[$idx] . '",' . "\r\n";
+    $msg .= '"' . $DimmerAddrs[$idx] . '", "' . $DimmerClasses[$idx] . '",' . "\r\n";
 }
 
-print STDOUT <<htmlText2End
+$msg .=<<htmlText2End
 ];
 <!--
 // copyright 1999 Idocs, Inc. http://www.idocs.com
@@ -168,19 +182,19 @@ function copySelectToInput (element){
 htmlText2End
   ;
 
-print STDOUT "<option value='MANUAL' selected></option>\n";
+$msg .= "<option value='MANUAL' selected></option>\n";
 
 my $i = 0;
 foreach my $k ( @sortedKeys )  {
     my $idx = $sortHash{$k};
-    print STDOUT "<option value='"
+    $msg .= "<option value='"
       . $i++ . "' text='"
       . $DimmerNames[$idx] . "'>"
       . $DimmerNames[$idx]
       . "</option>\n";
 }
 
-print STDOUT <<htmlText2End
+$msg .=<<htmlText2End
             </select>
             </td>
             <td>
@@ -198,5 +212,12 @@ values 256 and -1 are translated, respectively, to FAST ON and FAST off.</br>
 </body>
 </html>
 htmlText2End
-  ;
-
+;
+  
+my $response = HTTP::Response->new(HTTP::Status::HTTP_OK);
+  $response->header("Content-type" => "text/html");
+  $response->content($msg);
+  $c->send_basic_header;
+  $c->send_response($response);
+}
+1;

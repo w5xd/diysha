@@ -1,17 +1,21 @@
-#!/usr/local/bin/perl
 #Copyright (c) 2013 by Wayne Wright, Round Rock, Texas.
 #See license at http://github.com/w5xd/diysha/blob/master/LICENSE.md
 #
-# cgi script that process POST command to turn on/off the control schedule bits
+# package that process POST command to turn on/off the control schedule bits
 
 use strict;
 require HomeAutomation::Config;
 require HomeAutomation::LightSchedule;
+package web::scheduleOnOff;
 
+sub process_request {
+	my $self = shift; #not used
+	my $c = shift;
+	my $r = shift;
+	my $msg;
 #parameter
 my $DEBUG = 0;
 
-#We're a CGI script.
 #We take arguments. Either as HTTP POST or GET. Find them...
 my $buffer;
 my @pairs;
@@ -21,12 +25,17 @@ my $value;
 my %FORM;
 
 # Read in text
-$ENV{'REQUEST_METHOD'} =~ tr/a-z/A-Z/;
-if ( $ENV{'REQUEST_METHOD'} eq "POST" ) {
-    read( STDIN, $buffer, $ENV{'CONTENT_LENGTH'} );
+# Read in text
+my $method = $r->method;
+$method =~ tr/a-z/A-Z/;
+if ( $method eq "POST" ) {
+   $buffer = $r->content;
 }
-else {
-    $buffer = $ENV{'QUERY_STRING'};
+elsif ($method eq "GET") {
+    $buffer = $r->uri->query;
+} else {
+	    $c->send_error(HTTP::Status::HTTP_FORBIDDEN);
+	    return;
 }
 
 # Split information into name/value pairs
@@ -39,10 +48,7 @@ foreach $pair (@pairs) {
 }
 
 # required http header cuz we're CGI
-sub StartHtml() {
-    print STDOUT <<FirstSectionDone;
-Content-type: text/html
-
+$msg=<<FirstSectionDone;
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -52,14 +58,12 @@ Content-type: text/html
 <table border='1'>
 <tr><th>Outside</th><th>Inside</th><th>Relay</th><th>Heat Pump Min(F)</th></tr>
 FirstSectionDone
-}
-
-&StartHtml;
+;
 
 if ($DEBUG) {
-    print "FORM: <br/> \n";
+    $msg .= "FORM: <br/> \n";
     while ( my ( $key, $value ) = each(%FORM) ) {
-        print "$key => $value<br/>\n";
+        $msg .= "$key => $value<br/>\n";
     }
 }
 &HomeAutomation::Config::initialize();
@@ -101,7 +105,7 @@ if ( defined( $FORM{Update} )
 
 ( $inside, $outside, $relay ) =
   &HomeAutomation::LightSchedule::getScheduleOnOff();
-print STDOUT "<tr><td>"
+$msg .= "<tr><td>"
   . ( $outside ? "Active" : "Inactive" ) . "</td>" . "<td>"
   . ( $inside  ? "Active" : "Inactive" ) . "</td>" . "<td>"
   . ( $relay   ? "Active" : "Inactive" ) . "</td>" . "<td>"
@@ -111,19 +115,26 @@ print STDOUT "<tr><td>"
 
 my $j = 0;
 foreach (@MonitorMessages) {
-	print STDOUT "<pre>\n" if ($j == 0);
+	$msg .= "<pre>\n" if ($j == 0);
         my $i = 0;
         foreach (split (/\n/, $_) ) {
-        print STDOUT "&nbsp;&nbsp;&nbsp;" if ($i != 0);
-        print STDOUT $_ . "\n";
+        $msg .= "&nbsp;&nbsp;&nbsp;" if ($i != 0);
+        $msg .= $_ . "\n";
         $i += 1;
     }
     $j += 1;
 }
-print STDOUT "</pre>\n" if ($j != 0);
+$msg .= "</pre>\n" if ($j != 0);
 
-print STDOUT <<Form_print_done7;
+$msg .=<<Form_print_done7;
 </body>
 </html>
 Form_print_done7
-
+;
+my $response = HTTP::Response->new(HTTP::Status::HTTP_OK);
+  $response->header("Content-type" => "text/html");
+  $response->content($msg);
+  $c->send_basic_header;
+  $c->send_response($response);
+}
+1;

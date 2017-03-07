@@ -1,13 +1,18 @@
-#!/usr/local/bin/perl
-#Copyright (c) 2013 by Wayne Wright, Round Rock, Texas.
+#Copyright (c) 2017 by Wayne Wright, Round Rock, Texas.
 #See license at http://github.com/w5xd/diysha/blob/master/LICENSE.md
-# cgi script that process POST command to control Insteon devices
-# via  http
+# http process POST command to control Insteon devices
 
 use strict;
 require PowerLineModule::Modem;
 use AppConfig;
+package web::insteonControl;
 
+sub process_request {
+	my $self = shift; #not used
+	my $c = shift;
+	my $r = shift;
+	my $msg;
+	
 #parameter
 my $DEBUG = 0;
 
@@ -25,7 +30,6 @@ $config->file($cfgFileName);
 
 my $ModemDevice = $config->get("INSTEON_Modem");
 
-#We're a CGI script.
 #We take arguments. Either as HTTP POST or GET. Find them...
 my $buffer;
 my @pairs;
@@ -35,12 +39,16 @@ my $value;
 my %FORM;
 
 # Read in text
-$ENV{'REQUEST_METHOD'} =~ tr/a-z/A-Z/;
-if ( $ENV{'REQUEST_METHOD'} eq "POST" ) {
-    read( STDIN, $buffer, $ENV{'CONTENT_LENGTH'} );
+my $method = $r->method;
+$method =~ tr/a-z/A-Z/;
+if ( $method eq "POST" ) {
+   $buffer = $r->content;
 }
-else {
-    $buffer = $ENV{'QUERY_STRING'};
+elsif ($method eq "GET") {
+    $buffer = $r->uri->query;
+} else {
+	    $c->send_error(HTTP::Status::HTTP_FORBIDDEN);
+	    return;
 }
 
 # Split information into name/value pairs
@@ -53,10 +61,8 @@ foreach $pair (@pairs) {
 }
 
 # required http header cuz we're CGI
-sub StartHtml() {
-    print STDOUT <<FirstSectionDone;
-Content-type: text/html
 
+$msg=<<FirstSectionDone;
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -64,21 +70,19 @@ Content-type: text/html
 </head>
 <body>
 FirstSectionDone
-}
-
-&StartHtml;
+;
 
 if ($DEBUG) {
-    print "FORM: <br/> \n";
+    $msg .= "FORM: <br/> \n";
     while ( my ( $key, $value ) = each(%FORM) ) {
-        print "$key => $value<br/>\n";
+        $msg .= "$key => $value<br/>\n";
     }
 }
 
 my $Modem = PowerLineModule::Modem->new( $ModemDevice, 0, "" );
 
 if ( $Modem->openOk() == 0 ) {
-    print STDOUT "Oops, no modem device\n";
+    $msg .= "Oops, no modem device\n";
 }
 else {
     if (   defined( $FORM{Update} )
@@ -117,7 +121,7 @@ else {
                 else {
                     $res = $DimmerHandle->setFanSpeed($new_val);
                 }
-                print STDOUT "Set dimmer "
+                $msg .= "Set dimmer "
                   . $id . " to "
                   . $new_val
                   . " with result "
@@ -131,7 +135,7 @@ else {
                 else {
                     $new_val = $DimmerHandle->getFanSpeed();
                 }
-                print STDOUT "Got dimmer value "
+                $msg .= "Got dimmer value "
                   . $new_val
                   . " for dimmer id "
                   . $id
@@ -139,13 +143,20 @@ else {
             }
         }
         else {
-            print STDOUT "Oops no dimmer handle<br/>\n";
+            $msg .= "Oops no dimmer handle<br/>\n";
         }
     }
 }
 
-print STDOUT <<Form_print_done6;
+$msg .=<<Form_print_done6;
 </body>
 </html>
 Form_print_done6
-
+;
+my $response = HTTP::Response->new(HTTP::Status::HTTP_OK);
+  $response->header("Content-type" => "text/html");
+  $response->content($msg);
+  $c->send_basic_header;
+  $c->send_response($response);
+}
+1;

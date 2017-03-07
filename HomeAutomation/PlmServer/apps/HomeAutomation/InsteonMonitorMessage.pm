@@ -13,7 +13,7 @@ sub new {
     my $proto     = shift;
     my $class     = ref($proto) || $proto;
     my $self = {};
-    my $self->{_name} = shift;
+    $self->{_name} = shift;
     $self->{_actual}        = 0;
     $self->{_prevHeartbeat} = [];
     $self->{_prevGroup}     = [];

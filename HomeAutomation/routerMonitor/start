@@ -9,6 +9,8 @@ use File::Basename;
 use File::Spec;
 use File::Path qw(make_path);
 
+my $PlmServerPort = 8100;
+
 # setup software install location
 my ($fn, $DIR) = fileparse($0);  #base file specs on location of this script
 	($fn, $DIR) = fileparse(substr($DIR,0,-1));
@@ -44,5 +46,9 @@ my ($fn, $DIR) = fileparse($0);  #base file specs on location of this script
 	system ('bash -c ./monitor');
 	
         chdir  "$DIR/sensorMonitor";
-	system ('/usr/local/bin/perl -w -I.. monitorSensors '. $houseConfigPath.' >' . $ENV{FURNACE_LOG_LOCATION} . '/sensorMonitor.log 2>&1 &');
+	system ('/usr/local/bin/perl -w -I.. monitorSensors '. $houseConfigPath.' >' . 
+		$ENV{FURNACE_LOG_LOCATION} . '/sensorMonitor.log 2>&1 &');
+
+	chdir "$DIR/PlmServer";
+	system ("/usr/local/bin/perl -w -I. -I./apps main.pl $PlmServerPort $DIR/httpd/htdocs/insteon/logfile.txt");
 

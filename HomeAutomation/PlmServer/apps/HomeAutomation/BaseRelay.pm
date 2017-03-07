@@ -14,7 +14,7 @@ sub new {
      my $class = shift;
      my $dimmer  = shift;
      my $self = {};
-     my $self->{_dimmer} = $dimmer;
+     $self->{_dimmer} = $dimmer;
      bless $self, $class; 
      return $self;
 }

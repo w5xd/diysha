@@ -40,5 +40,6 @@ readMotion/readMotion
 httpd/conf/htotpusers.lock
 httpd/htdocs/symlinks/
 httpd/htdocs/insteon/logfile*.txt
+httpd/htdocs/insteon/Ev*.txt
 httpd/temp/
 

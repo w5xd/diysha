@@ -1,14 +1,11 @@
-#Copyright (c) 2013 by Wayne Wright, Round Rock, Texas.
+#Copyright (c) 2017 by Wayne Wright, Round Rock, Texas.
 #See license at http://github.com/w5xd/diysha/blob/master/LICENSE.md
 package HomeAutomation::StartMonitor;
 
-# The perl startup routine for HomeAutomation in the apache web server
+# The perl startup routine for HomeAutomation in the perl web server
 use strict;
-use Apache2::RequestRec ();
-use Apache2::RequestIO  ();
 use Digest::MD5 qw(md5_hex);
 
-use Apache2::Const -compile => qw(OK);
 require PowerLineModule::Modem;
 require HomeAutomation::LightSchedule;
 require HomeAutomation::HouseConfigurationInsteon;
@@ -44,14 +41,10 @@ sub monitor_cb {    # forward to monitor object
 }
 my $initSchedOnce : shared;
 
-sub handler {
-    my $r = shift;
-    $r->content_type('text/plain');
-
+sub start {
+    my $logfile = shift;
     my $iCfg    = HomeAutomation::HouseConfigurationInsteon->new();
     my $dev     = $iCfg->get("INSTEON_Modem");
-    my $logfile = $r->dir_config('LogFile');
-    my $hvacDir = $r->dir_config('HvacDir');
     my $Modem   = PowerLineModule::Modem->new( $dev, 2, $logfile );
     my $bck;
 
@@ -64,7 +57,10 @@ sub handler {
 
     if ( !$doneAlready )    #first time through
     {
-        if ( $Modem->openOk() != 0 )    #and got a live COM port
+        if ( $Modem->openOk() == 0 )     {
+		print STDERR "Failed to open modem $dev\n";
+	}
+        else # got a live COM port
         {
             $Modem->setCommandDelay(700)
               ;    #700 msec delay from incoming to outgoing
@@ -301,16 +297,6 @@ sub handler {
             $bck->detach();
         }
     }
-    $r->puts("\n");
-    $r->puts( "Call to openPowerLineModem.\n Got "
-          . $Modem->openOk() . ", "
-          . $Modem->wasOpen() . ", "
-          . ( $doneAlready ? "1" : "0" )
-          . "\n" );
-    if ( defined($bck) ) {
-        $r->puts("Started a thread\n");
-    }
-    return Apache2::Const::OK;
 }
 
 1;

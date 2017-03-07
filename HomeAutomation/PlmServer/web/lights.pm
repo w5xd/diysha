@@ -1,7 +1,7 @@
 #!/usr/local/bin/perl
 #Copyright (c) 2013 by Wayne Wright, Round Rock, Texas.
 #See license at http://github.com/w5xd/diysha/blob/master/LICENSE.md
-# cgi script that maintains HTML form to to display state of and control Insteon devices
+# script that maintains HTML form to to display state of and control Insteon devices
 # via its http interface.
 
 # download and install
@@ -11,6 +11,12 @@ use File::Basename;
 require PowerLineModule::Modem;
 require HomeAutomation::HouseConfigurationInsteon;
 
+package web::lights;
+sub process_request {
+	my $self = shift; #not used
+	my $c = shift;
+	my $r = shift;
+	my $msg;
 #parameter
 my $DEBUG = 0;
 
@@ -90,12 +96,16 @@ my $fromCache = 0;
 my %FORM;
 
 # Read in text
-$ENV{'REQUEST_METHOD'} =~ tr/a-z/A-Z/;
-if ( $ENV{'REQUEST_METHOD'} eq "POST" ) {
-    read( STDIN, $buffer, $ENV{'CONTENT_LENGTH'} );
+my $method = $r->method;
+$method =~ tr/a-z/A-Z/;
+if ( $method eq "POST" ) {
+   $buffer = $r->content;
 }
-else {
-    $buffer = $ENV{'QUERY_STRING'};
+elsif ($method eq "GET") {
+    $buffer = $r->uri->query;
+} else {
+	    $c->send_error(HTTP::Status::HTTP_FORBIDDEN);
+	    return;
 }
 
 # Split information into name/value pairs
@@ -109,9 +119,7 @@ foreach $pair (@pairs) {
 
 # required http header cuz we're CGI
 sub StartHtml() {
-    print STDOUT <<FirstSectionDone;
-Content-type: text/html
-
+return <<FirstSectionDone;
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -149,21 +157,19 @@ else
 </head>
 <body>
 FirstSectionDone
-
 }
-
 if ($DEBUG) {
-    &StartHtml;
-    print "FORM: <br/> \n";
+    $msg = StartHtml();
+    $msg .= "FORM: <br/> \n";
     while ( my ( $key, $value ) = each(%FORM) ) {
-        print "$key => $value<br/>\n";
+        $msg .= "$key => $value<br/>\n";
     }
 }
 
 my $Modem = PowerLineModule::Modem->new( $ModemDevice, 0, "" );
 if ( $Modem->openOk() == 0 ) {
-    if ( !$DEBUG ) { &StartHtml; }
-    print STDOUT "Oops, no modem device\n";
+    if ( !$DEBUG ) { $msg = &StartHtml; }
+    $msg .= "Oops, no modem device\n";
     if ( !$DEBUG ) { return 0; }
 }
 else {
@@ -173,7 +179,7 @@ else {
     if ( defined( $FORM{Update} ) && ( $FORM{Update} eq "Update" ) ) {
         $fromCache = 0;
         if ( !$DEBUG ) {
-            print "Location: " . basename($0) . "\n\n";
+            $msg .= "Location: " . basename($0) . "\n\n";
         }
         my $i = 0;
 	#the sort is to honor the user's LightsPageOrder setting
@@ -187,7 +193,7 @@ else {
                     my $dimmer = $DimmerHandles[$idx];
                     $dimmer->setValue($new_val);
                     if ($DEBUG) {
-                        print "cell " . $cellName . "= " . $new_val . "<br/>\n";
+                        $msg .= "cell " . $cellName . "= " . $new_val . "<br/>\n";
                     }
                 }
             }
@@ -206,7 +212,7 @@ foreach (@DimmerHandles) {
     else { push( @DimmerVals, "error" ); }
 }
 
-print STDOUT <<Form_print_done2;
+$msg .=<<Form_print_done2;
 <form action="" method="post">
 <table border="1">
 <tr><th>Location</th><th>current</th><th>change</th></tr>
@@ -218,11 +224,11 @@ foreach my $k ( sort {$a <=> $b} (keys %sortHash )) {
     my $v   = $DimmerVals[$idx];
     if ( $v < 0 ) { $v = "error"; }
     $i = $i + 1; 
-    if ($DEBUG) { print STDOUT "<tr><td>";
-        print STDOUT "key=".$k."idx= ".$idx." v=".$v." i=".$i;
-	print STDOUT "</td></tr>\n";
+    if ($DEBUG) { $msg .= "<tr><td>";
+        $msg .= "key=".$k."idx= ".$idx." v=".$v." i=".$i;
+	$msg .= "</td></tr>\n";
     }
-    print STDOUT <<Form_print_row_done;
+    $msg .=<<Form_print_row_done;
 <tr>
 <td>$DimmerNames[$idx]</td>
 <td>$v</td>
@@ -231,15 +237,15 @@ foreach my $k ( sort {$a <=> $b} (keys %sortHash )) {
   </tr>
 Form_print_row_done
 }
-print STDOUT <<Form_print_done3;
+$msg .=<<Form_print_done3;
 </table>
 <input type="submit" name="Update" value="Update" />
 </form>
 Form_print_done3
 
 if ($DEBUG) {
-    print STDOUT "fromCache: " . $fromCache . "<br/>\n";
-    print STDOUT "TESTING: " . @DimmerAddrs . "<br/>\n";
+    $msg .= "fromCache: " . $fromCache . "<br/>\n";
+    $msg .= "TESTING: " . @DimmerAddrs . "<br/>\n";
 }
 my $colorString = "";
 my $i           = 0;
@@ -255,16 +261,16 @@ foreach (@DimmerVals) {
         else                { $colorString .= "\"rgb(255,20,150)\" "; }
 
         if ($DEBUG) {
-            print STDOUT "value  is " . $_ . "<br/>\n";
+            $msg .= "value  is " . $_ . "<br/>\n";
         }
     }
     $i++;
 }
 if ($DEBUG) {
-    print STDOUT $colorString . "<br/>\n";
+    $msg .= $colorString . "<br/>\n";
 }
 else {
-    print STDOUT '<img src="data:image/gif;base64,';
+    $msg .= '<img src="data:image/gif;base64,';
 
     my $AnnotatedGif;
     open( AnnotatedGif, "-|",
@@ -276,16 +282,22 @@ else {
     binmode AnnotatedGif;
     my $buf;
     while ( read( AnnotatedGif, $buf, 60 * 57 ) ) {
-        print encode_base64($buf);
+        $msg .= encode_base64($buf);
     }
 
-    print STDOUT <<Form_print_done5;
+    $msg .=<<Form_print_done5;
 " alt='house drawing' height='100%' width='100%'/>
 Form_print_done5
 }
 
-print STDOUT <<Form_print_done6;
+$msg .=<<Form_print_done6;
 </body>
 </html>
 Form_print_done6
-
+my $response = HTTP::Response->new(HTTP::Status::HTTP_OK);
+  $response->header("Content-type" => "text/html");
+  $response->content($msg);
+  $c->send_basic_header;
+  $c->send_response($response);
+}
+1;
