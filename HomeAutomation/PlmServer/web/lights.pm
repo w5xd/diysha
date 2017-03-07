@@ -159,8 +159,8 @@ else
 <body>
 FirstSectionDone
 }
+$msg = StartHtml();
 if ($DEBUG) {
-    $msg = StartHtml();
     $msg .= "FORM: <br/> \n";
     while ( my ( $key, $value ) = each(%FORM) ) {
         $msg .= "$key => $value<br/>\n";
@@ -169,9 +169,7 @@ if ($DEBUG) {
 
 my $Modem = PowerLineModule::Modem->new( $ModemDevice, 0, "" );
 if ( $Modem->openOk() == 0 ) {
-    if ( !$DEBUG ) { $msg = &StartHtml; }
     $msg .= "Oops, no modem device\n";
-    if ( !$DEBUG ) { return 0; }
 }
 else {
     foreach (@DimmerAddrs) {
@@ -200,9 +198,7 @@ else {
             }
             $i++;
         }
-        if ( !$DEBUG ) { return 0; }
     }
-    elsif ( !$DEBUG ) { &StartHtml; }
 }
 
 foreach (@DimmerHandles) {
