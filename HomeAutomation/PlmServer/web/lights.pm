@@ -87,7 +87,7 @@ my @DimmerHandles;
 
 #We're a CGI script.
 #We take arguments. Either as HTTP POST or GET. Find them...
-my $buffer;
+my $buffer="";
 my @pairs;
 my $pair;
 my $name;
