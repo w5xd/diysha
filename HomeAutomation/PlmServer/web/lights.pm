@@ -87,7 +87,7 @@ my @DimmerHandles;
 
 #We're a CGI script.
 #We take arguments. Either as HTTP POST or GET. Find them...
-my $buffer="";
+my $buffer;
 my @pairs;
 my $pair;
 my $name;
@@ -103,6 +103,7 @@ if ( $method eq "POST" ) {
 }
 elsif ($method eq "GET") {
     $buffer = $r->uri->query;
+    $buffer = "" if (!defined($buffer));
 } else {
 	    $c->send_error(HTTP::Status::HTTP_FORBIDDEN);
 	    return;

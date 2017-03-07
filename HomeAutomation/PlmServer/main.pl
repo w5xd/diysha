@@ -42,6 +42,7 @@ print "My URL is: \"", $d->url, "\"\n";
 
 while ( my $c = $d->accept ) {
     while ( my $r = $c->get_request ) {
+	$c->force_last_request();
         my $path = $r->uri->path;
         print STDERR "path: $path\n";
         my $page = $webpages{$path};
