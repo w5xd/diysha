@@ -179,7 +179,7 @@ else {
     if ( defined( $FORM{Update} ) && ( $FORM{Update} eq "Update" ) ) {
         $fromCache = 0;
         if ( !$DEBUG ) {
-            $msg .= "Location: " . basename($0) . "\n\n";
+            $msg .= "Location: " . File::Basename::basename($0) . "\n\n";
         }
         my $i = 0;
 	#the sort is to honor the user's LightsPageOrder setting
