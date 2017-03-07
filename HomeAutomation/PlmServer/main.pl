@@ -67,3 +67,5 @@ while ( my $c = $d->accept ) {
     $c->close;
     undef($c);
 }
+print STDERR "main.pl exit\n";
+
