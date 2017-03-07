@@ -90,6 +90,7 @@ sub poll {
 sub notifyTemperature {
     my $self = shift;
     my $who  = shift;
+    return 0 if (!defined($self->{_lastTemperature}));
     return $who->temperatureEvent( $self->{_lastTemperature},
         "WIRELESSGATEWAY" );
 }
