@@ -11,63 +11,81 @@
 
 use strict;
 require HTTP::Daemon;
+require IO::Select;
 use HTTP::Status;
 require HomeAutomation::StartMonitor;
 
+my $ListenLimit = 3;
 my $port;
 my $insteonLogFile;
 
 die "need port and insteon log file" if scalar @ARGV != 2;
-$port = $ARGV[0];
+$port           = $ARGV[0];
 $insteonLogFile = $ARGV[1];
-HomeAutomation::StartMonitor::start($insteonLogFile); #takes a while...
 
-my $d = HTTP::Daemon->new(
-    LocalAddr => 'localhost',
-    LocalPort => $port,
-) || die;
-
-my %webpages;
-opendir( my $dH, "web" ); #scan the directory...means you cannot add pages while running
+my %pagesLoaded;
+opendir( my $dH, "web" )
+  ;    #scan the directory...means you cannot add pages while running
 while ( my $file = readdir($dH) ) {
     if ( $file =~ s/\.pm$// ) {
-        $webpages{ "/" . $file } = $file;
+        eval "require web::$file";
+        if ($@) {
+            die "Cannot load web::$file\n$@";
+        }
+        else {
+            my $loaded = "web::$file";
+            $pagesLoaded{ "/" . $file } = $loaded;
+        }
     }
 }
 closedir($dH);
 
-my %pagesLoaded;
+HomeAutomation::StartMonitor::start($insteonLogFile);    #takes a while...
 
-print "My URL is: \"", $d->url, "\"\n";
+my $d = HTTP::Daemon->new(
+    LocalAddr => 'localhost',
+    LocalPort => $port,
+    Listen    => $ListenLimit,
+) || die;
 
-#because the daemon doesn't time out the keepalive
-#mechanism, we only get one client...
-while ( my $c = $d->accept ) {
-    while ( my $r = $c->get_request ) {
-        my $path = $r->uri->path;
-        print STDERR "path: $path\n";
-        my $page = $webpages{$path};
-       	my $loaded = $pagesLoaded{$path};
-        if ( defined($page) && !defined( $pagesLoaded{$path} ) ) {
-            eval "require web::$page";
-            if ($@) {
-		delete $webpages{$path};
-                print STDERR "Cannot load web::$page\n$@";
-            }
-	    else {
-	        $loaded = "web::$page";
-                $pagesLoaded{$path} = $loaded;
+print STDERR "My URL is: \"", $d->url, "\"\n";
+
+my $selector = IO::Select->new($d);
+
+while ( my @ready = $selector->can_read ) {
+    foreach my $fh (@ready) {
+        if ( $fh == $d ) {
+            # Create a new socket
+            my $c = $d->accept;
+            $selector->add($c);
+        }
+        else {
+            # Process socket
+            my $result = process_request( $fh, \%pagesLoaded );
+            # Maybe we have finished with the socket
+            if ( $result == 0 ) {
+                $selector->remove($fh);
+                $fh->close;
             }
         }
+    }
+}
+
+print STDERR "main.pl exit\n";
+
+sub process_request {
+    my $c           = shift;    #connection to process
+    my $pagesLoaded = shift;
+    if ( my $r = $c->get_request ) {
+        my $path = $r->uri->path;
+        my $loaded = $pagesLoaded->{$path};
         if ( defined $loaded ) {
             $loaded->process_request( $c, $r );
         }
         else {
-            $c->send_error(RC_FORBIDDEN);
+            $c->send_error(RC_NOT_FOUND);
         }
+        return 1;
     }
-    $c->close;
-    undef($c);
+    return 0;
 }
-print STDERR "main.pl exit\n";
-
