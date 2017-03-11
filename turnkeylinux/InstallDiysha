@@ -46,6 +46,8 @@ popd
 
 mkdir /var/diysha/HomeAutomation/httpd/htdocs/insteon
 chown www-data /var/diysha/HomeAutomation/httpd/htdocs/insteon
+mkdir /var/diysha/HomeAutomation/logs
+chown www-data /var/diysha/HomeAutomation/logs
 
 #www-data runs the webserver and must write a couple of things
 chown www-data /var/diysha/HomeAutomation/httpd/logs /var/diysha/HomeAutomation/httpd/run /var/diysha/HomeAutomation/routerMonitor /var/diysha/HomeAutomation/thermostat /var/diysha/HomeAutomation/hvac
