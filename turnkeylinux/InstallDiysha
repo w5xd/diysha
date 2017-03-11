@@ -20,8 +20,9 @@ if [ ! -f /usr/local/bin/perl ] #diysha needs /usr/local/bin/perl
         then # wasn't one, so link one in
                 ln -s /usr/bin/perl /usr/local/bin/perl
 fi
-
-pushd diysha/HomeAutomation
+pushd diysha
+git submodule update --init
+cd HomeAutomation
 make
 cd w5xdInsteon/PowerLineModule
 make install
