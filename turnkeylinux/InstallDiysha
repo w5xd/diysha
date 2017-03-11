@@ -66,8 +66,6 @@ cd ../conf-enabled
 ln -s ../conf-available/homeautomation* .
 rm security.conf
 rm serve-cgi-bin.conf
-cd ../mods-enabled
-ln -s ../mods-available/w5xdInsteon.load
 popd
 
 # The time zone must match that of the radiothermostat
