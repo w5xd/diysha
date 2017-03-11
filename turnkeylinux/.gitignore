@@ -1,0 +1,6 @@
+*.log
+
+boost*
+libusb*
+mod_authn*
+postfix*

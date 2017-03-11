@@ -11,6 +11,8 @@
 *\~
 *.bak
 
+logs/
+
 hvac/Debug/
 hvac/Release/
 hvac/procEventLog

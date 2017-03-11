@@ -134,7 +134,6 @@ Form_print_done7
 my $response = HTTP::Response->new(HTTP::Status::HTTP_OK);
   $response->header("Content-type" => "text/html");
   $response->content($msg);
-  $c->send_basic_header;
   $c->send_response($response);
 }
 1;
