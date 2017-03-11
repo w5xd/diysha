@@ -24,7 +24,9 @@ pushd diysha
 git submodule update --init
 cd HomeAutomation
 make
-cd w5xdInsteon/PowerLineModule
+cd pcsensor-0.0.2
+make rules-install
+cd ../w5xdInsteon/PowerLineModule
 make install
 cd ../bin
 cp w5xdInsteon.so /usr/lib
