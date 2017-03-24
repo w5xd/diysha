@@ -1,5 +1,5 @@
 #!/usr/local/bin/perl
-#Copyright (c) 2013 by Wayne Wright, Round Rock, Texas.
+#Copyright (c) 2017 by Wayne Wright, Round Rock, Texas.
 #See license at http://github.com/w5xd/diysha/blob/master/LICENSE.md 
 use lib "../..";
 require define_local;
@@ -8,9 +8,23 @@ use IPC::Open2;
 
 my $DEBUG = 0;    #makes only text when nonzero
 
-my $BATTERY_SLOPE = 0.4617; #These parameters are from linear regression on first few weeks operation
-#on fresh cells
-my $BATTERY_OFFSET = 40;
+#The 2.7K resistor from A0 to ground on the wireless thermometer forms
+#a voltage divider combined with the Atmega328's internal pullup resistor
+#such that the ADC measures the battery voltage. But that pullup resistor's
+#value varies a large amount part-by-part which means the telemetered 
+#ADC value is uncalibrated. The calibration process is to take the first
+#couple of thousand telemetered samples after fresh cells are put in the
+#battery and run a linear regression (LINEST in OpenOffice Calc) to
+#calibrate a straight line from temperature to ADC value with that fresh
+#battery. That regression, assuming a reasonable range of temperature/ADC
+#pairs have been recorded, cancels some of the temperature dependency
+#of the ADC reading such that the "norm" curve calculated below can
+#be monitored over time and indicate a low battery condition
+
+my $BATTERY_SLOPE = 0.4617; #The slope parameter is from linear regression on first few weeks ...
+#... of operation on fresh cells
+my $BATTERY_OFFSET = 40; #we don't use the regression offset but instead just push the norm line...
+#...up to the top of the graph.
 my $THERM_NUM = "4"; #each thermometer has a network ID
 my $ADC_SCALE_MIN="250";
 my $ADC_SCALE_MAX="300";
