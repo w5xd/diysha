@@ -195,7 +195,7 @@ plot \\
    "$ENV{'FURNACE_LOG_LOCATION'}/modtronix.log" using 1:5 with lines title "outlet", \\
    "$ENV{'FURNACE_LOG_LOCATION'}/pcsensor.log" using 1:5 with lines title "outside", \\
    "$ENV{'FURNACE_LOG_LOCATION'}/modtronix.log" using 1:3 with lines title "out(hp)", \\
-   "$ENV{'FURNACE_LOG_LOCATION'}/weather_gov.log" using 1:(\$4 < 3720 ? \$3 : 1/0) with lines title "airport", \\
+   "$ENV{'FURNACE_LOG_LOCATION'}/weather_gov.log" using 1:(\$4 < 3720 ? (\$3 > -96 ? \$3 : 1/0) : 1/0) with lines title "airport", \\
    "$ENV{'THERMOSTAT_LOG_LOCATION'}/thermostat_log.txt" using 1:(\$7 > 1 ? \$7 : 1/0) axis x1y2 with linespoints title "hvac", \\
    "$ENV{'FURNACE_LOG_LOCATION'}/poll_events.log" using 2:(\$5 > 1 ? \$5 : 1/0) axis x1y2 with linespoints title "opto", \\
    "$ENV{'FURNACE_LOG_LOCATION'}/relay_events.log" using 2:(\$5 > 1 ? \$5 : 1/0) axis x1y2 with linespoints title "relay"
