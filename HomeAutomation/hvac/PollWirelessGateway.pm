@@ -49,7 +49,7 @@ sub poll {
         }
         else {
             my @splitLine = split( ' ', $line );
-            if ( scalar @splitLine == 7 ) {
+            if ( scalar @splitLine >= 7 ) {
                 my $nodeId = shift @splitLine;
 
                 #did INI file say this is an outside temperature?
