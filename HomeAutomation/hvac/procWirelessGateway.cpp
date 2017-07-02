@@ -82,7 +82,7 @@ int main(int argc, char* argv[])
 }
 
 // parsing function helper. search for unsigned integer in decimal, followed by space char
-static bool parseForUnsigned(char c, unsigned &target, unsigned &counter, bool &error)
+static bool parseForUnsigned(char c, unsigned &target, unsigned &counter, bool &error, bool ignoreSign=false)
 {
     if (isdigit(c))
     {
@@ -90,6 +90,8 @@ static bool parseForUnsigned(char c, unsigned &target, unsigned &counter, bool &
         target += c - '0';
         counter += 1;
     }
+    else if (ignoreSign && c == '-' && counter == 0) // ignore
+        counter += 1;
     else
     {
         if (!counter || c != ' ')
@@ -276,7 +278,7 @@ static void GetMessages(w5xdInsteon::PlmMonitorIO &modem)
                 break;
 
             case NODECOUNT2:
-                if (parseForUnsigned(c, nodeCount, counter, error))
+                if (parseForUnsigned(c, nodeCount, counter, error, true))
                 {
                     if (error && c == ',')
                     {
