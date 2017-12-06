@@ -31,3 +31,4 @@ while [ $CURLOG -gt 0 ]; do
     sleep 30m
     let CURLOG=CURLOG+1
 done
+# https://github.com/ThermoMan/Thermostat-Tracking/blob/master/lib/t_lib.php for other API example

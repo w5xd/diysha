@@ -45,7 +45,7 @@ sub acquireTemperature {
 
     if (defined($sp_forecast)) {
         #start calling (somebody) back...which is why we put pointer to our data into self
-        $self->parse($sp_forecast);
+       eval {        $self->parse($sp_forecast); } ;
     } else {
         $self->{_wxgov_error} = "url fetch failed" unless defined $sp_forecast;
     }

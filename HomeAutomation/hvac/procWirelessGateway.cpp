@@ -80,8 +80,9 @@ int main(int argc, char* argv[])
         DeleteFromGateway(modem, oldestToDelete);
     return 0;
 }
+
 // parsing function helper. search for unsigned integer in decimal, followed by space char
-static bool parseForUnsigned(char c, unsigned &target, unsigned &counter, bool &error)
+static bool parseForUnsigned(char c, unsigned &target, unsigned &counter, bool &error, bool ignoreSign=false)
 {
     if (isdigit(c))
     {
@@ -89,6 +90,8 @@ static bool parseForUnsigned(char c, unsigned &target, unsigned &counter, bool &
         target += c - '0';
         counter += 1;
     }
+    else if (ignoreSign && c == '-' && counter == 0) // ignore
+        counter += 1;
     else
     {
         if (!counter || c != ' ')
@@ -173,6 +176,10 @@ static void GetMessages(w5xdInsteon::PlmMonitorIO &modem)
           QueueBytesFree 9
           */
 
+    /*   or with humidity sensor
+          Queue 44 3 REC -28 6 C:0, B:273, T:+26.18 R:58.27
+     */
+
     // unix-style time formatter
     struct tm *local;
     time_t now;
@@ -188,7 +195,7 @@ static void GetMessages(w5xdInsteon::PlmMonitorIO &modem)
         QUEUE, MSGID, AGE, REC, RSSI, NODEID,
         NODECOUNT1, NODECOUNT2, NODECOUNT3,
         NODEBATTERY1, NODEBATTERY2, NODEBATTERY3,
-        NODETEMPERATURE1, NODETEMPERATURE2, PARSE_SUCCESS
+        NODETEMPERATURE1, NODETEMPERATURE2, NODE_RH1, NODE_RH2, NODE_RH3, PARSE_SUCCESS
     };
 
     // for every line in the gateway response..
@@ -197,6 +204,8 @@ static void GetMessages(w5xdInsteon::PlmMonitorIO &modem)
         // looking for WirelessThermometer reports in the gateway.
         // They are of this form:
         //Queue 33 5299 REC -59 3 C:44, B:263, T:+20.31
+        // ...or...
+        //Queue 44 3 REC -28 6 C:0, B:273, T:+26.18 R:58.27
 
         LineParseState_t state(QUEUE);
         unsigned counter(0); // count characters in the current state
@@ -209,7 +218,8 @@ static void GetMessages(w5xdInsteon::PlmMonitorIO &modem)
         unsigned age(0);
         unsigned rssi(0);
         bool negRssi(false);
-        float tempC(0);
+        float tempC(-99.f);
+        float humidityPercent(-1.f);
 
         unsigned lineIdx(0); // count characters in the line
 
@@ -221,6 +231,7 @@ static void GetMessages(w5xdInsteon::PlmMonitorIO &modem)
             static const char CText[] = "C:";
             static const char BText[] = "B:";
             static const char TText[] = "T:";
+            static const char RhText[] = "R:";
 
             bool error(false);// error flag for this character. aborts line processing
             switch (state)
@@ -267,7 +278,7 @@ static void GetMessages(w5xdInsteon::PlmMonitorIO &modem)
                 break;
 
             case NODECOUNT2:
-                if (parseForUnsigned(c, nodeCount, counter, error))
+                if (parseForUnsigned(c, nodeCount, counter, error, true))
                 {
                     if (error && c == ',')
                     {
@@ -326,45 +337,74 @@ static void GetMessages(w5xdInsteon::PlmMonitorIO &modem)
                 if (!tempCstr.empty() && (tempCstr[0] == '-' || tempCstr[0] == '+'))
                 {
                     tempC = (float)(atof(tempCstr.c_str()));
-                    state = PARSE_SUCCESS;
+                    state = NODE_RH1;
                 }
             }
             break;
 
+            case NODE_RH1:
+                if (c == ' ')
+                {
+                    state = NODE_RH2;
+                    counter = 0;
+                }
+                break;
+
+            case NODE_RH2:
+                if (parseForString(c, RhText, sizeof(RhText), counter, error))
+                    state = NODE_RH3;
+                break;
+
+            case NODE_RH3:
+                {
+                    std::string humidityStr = line.substr(lineIdx);
+                    if (!humidityStr.empty())
+                    {
+                        humidityPercent = (float)(atof(humidityStr.c_str()));
+                        state = PARSE_SUCCESS;
+                    }
+                }
+                break;
             }
             lineIdx += 1;
 
             if (error)
                 break;
+        } // for (auto const &c : line)
+        
+        // if we parsed OK
+        // Deal with success, and break the for(:line) loop 
+        if (static_cast<int>(state) >= static_cast<int>(NODE_RH1))
+        {
+            foundEntryToDelete = true;
+            oldestMessageId = messageId;
 
-            // if we parsed OK on the current character. 
-            // Deal with success, and break the for(:line) loop 
-            if (state == PARSE_SUCCESS)
-            {
-                foundEntryToDelete = true;
-                oldestMessageId = messageId;
+            time_t thisEvent = now - age; // account for time inside gateway
+            local = localtime(&thisEvent);
+            char buf[64];
+            // old unix-style time string for first two columns in log
+            sprintf(buf, "%04d/%02d/%02d %02d:%02d:%02d",
+                local->tm_year + 1900,
+                local->tm_mon + 1,
+                local->tm_mday,
+                local->tm_hour,
+                local->tm_min,
+                local->tm_sec);
 
-                time_t thisEvent = now - age; // account for time inside gateway
-                local = localtime(&thisEvent);
-                char buf[64];
-                // old unix-style time string for first two columns in log
-                sprintf(buf, "%04d/%02d/%02d %02d:%02d:%02d",
-                    local->tm_year + 1900,
-                    local->tm_mon + 1,
-                    local->tm_mday,
-                    local->tm_hour,
-                    local->tm_min,
-                    local->tm_sec);
+            short rssiVal = negRssi ? -(short)rssi : rssi;
 
-                 short rssiVal = negRssi ? -(short)rssi : rssi;
-                std::cout << nodeId << " " << buf << " " << std::fixed << std::setw(6) << std::setprecision(2) << tempC / 5.f * 9.f + 32.f << " " <<
-                    nodeBattery << " " <<
-                    rssiVal << " " <<
-                    nodeCount << std::endl;
-                break;  // there are more characters on the line. tempC already got them
-            }
+            std::ostringstream oss;
+            oss << nodeId << " " << buf << " " << std::fixed << std::setw(6) << std::setprecision(2) << 
+                tempC / 5.f * 9.f + 32.f << // present as farenheit
+                " " <<
+                nodeBattery << " " <<
+                rssiVal << " " <<
+                nodeCount;
+            if (humidityPercent > 0.f)
+                oss << " " << humidityPercent;
+            std::cout << oss.str() << std::endl;
         }
-    }
+   }
     if (foundEntryToDelete)
         std::cout << "Found delete: " << oldestMessageId << std::endl;
     else
