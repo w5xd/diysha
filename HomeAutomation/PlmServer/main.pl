@@ -19,9 +19,10 @@ my $ListenLimit = 3;
 my $port;
 my $insteonLogFile;
 
-die "need port and insteon log file" if scalar @ARGV != 2;
+die "need port and insteon log file" if scalar @ARGV != 3;
 $port           = $ARGV[0];
 $insteonLogFile = $ARGV[1];
+my $scheduleLogFile = $ARGV[2];
 
 my %pagesLoaded;
 opendir( my $dH, "web" )
@@ -40,7 +41,7 @@ while ( my $file = readdir($dH) ) {
 }
 closedir($dH);
 
-HomeAutomation::StartMonitor::start($insteonLogFile);    #takes a while...
+HomeAutomation::StartMonitor::start($insteonLogFile, $scheduleLogFile);    #takes a while...
 
 my $d = HTTP::Daemon->new(
     LocalAddr => 'localhost',
@@ -79,6 +80,7 @@ sub process_request {
     if ( my $r = $c->get_request ) {
         my $path = $r->uri->path;
         my $loaded = $pagesLoaded->{$path};
+        print STDERR "main.pl process_request " . $path . "\n";
         if ( defined $loaded ) {
             $loaded->process_request( $c, $r );
         }

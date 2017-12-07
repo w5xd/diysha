@@ -119,7 +119,8 @@ sub recordEvent {
     my $self = shift;
     my $time = shift;
     my $ret = 1;
-    if (($self->{_lastHeartbeat} == $time) &&
+    if (defined($self->{_lastHeartbeat}) &&
+	($self->{_lastHeartbeat} == $time) &&
 	($self->{_group} == $_[1]) &&
 	($self->{_cmd1} == $_[2])) { $ret = 0; }
     $self->{_lastHeartbeat} = $time;

@@ -24,7 +24,7 @@ sub DoSchedule {
 	my $self = shift;
         my $hour = shift;
         my $min = shift;
-        if ($self->{_hour} != $hour)
+        if (!defined($self->{_hour}) || $self->{_hour} != $hour)
         {
             $self->{_hour} = $hour;
             my $dimmer = $self->{_dimmer};

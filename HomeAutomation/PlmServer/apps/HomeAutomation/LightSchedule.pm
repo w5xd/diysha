@@ -11,7 +11,7 @@ require HomeAutomation::HouseConfigurationInsteon;
 require HomeAutomation::InsteonMonitorMessage;
 
 #here is the plan...
-# We get called exactly once after Apache startup on our backgroundThread entry point.
+# We get called exactly once after startup on our backgroundThread entry point.
 # As long as we can talk to the PowerLineModem, we'll never exit.
 # We poll on a timer (maybe 20 to 60 seconds) every poll cycle we decide whether we should
 # change the setting on any of the lights we control.
@@ -43,6 +43,7 @@ sub turnScheduleOnOff {
     my $DoInside  = shift == 0 ? 0 : 1;
     my $DoOutside = shift == 0 ? 0 : 1;
     my $DoRelay   = shift == 0 ? 0 : 1;
+    my $logFile = shift;
     my $runDir = $ENV{HTTPD_LOCAL_ROOT} . "/run";
     if ($DoInside) { open FH, ">$runDir/DoInside"; close FH; }
     else { unlink "$runDir/DoInside";}
@@ -50,7 +51,7 @@ sub turnScheduleOnOff {
     else { unlink "$runDir/DoOutside";}
     if ($DoRelay) { open FH, ">$runDir/DoRelay"; close FH; }
     else { unlink "$runDir/DoRelay";}
-    print STDERR "DoInside = "
+    print $logFile "DoInside = "
       . $DoInside
       . " DoOutside= "
       . $DoOutside
@@ -114,14 +115,15 @@ sub backgroundThread {
     my $argsIn  = shift;    #inside dimmers
     my $argsRly = shift;    #SpecialRelay
 
-    {
-       my $DoInside  = shift;     #these are the way defaults are set as of Apr 2013
-       my $DoOutside = shift;
-       my $DoRelay   = shift;
-       turnScheduleOnOff($DoInside, $DoOutside, $DoRelay);
-    }
+    my $DoInside  = shift;     #these are the way defaults are set as of Apr 2013
+    my $DoOutside = shift;
+    my $DoRelay   = shift;
 
     my $monitors = shift;
+    my $logFileName = shift;
+    my $logFile;
+    open ($logFile, ">", $logFileName);
+    turnScheduleOnOff($DoInside, $DoOutside, $DoRelay, $logFile);
 
     # $args[$i] are handles to the PowerLineModem Dimmer objects
     my @currentValues        = ();
@@ -155,7 +157,7 @@ sub backgroundThread {
 		$DoOutsideLocal = (-e "$runDir/DoOutside");
 		$DoRelayLocal = (-e "$runDir/DoRelay");
 	}
-        LoadSunriseTable();    #update table first time and on New Year's day
+        LoadSunriseTable($logFile);    #update table first time and on New Year's day
         my $t = time + $TimeZoneOffset;
         (
             my $sec,  my $min,  my $hour, my $mday, my $mon,
@@ -169,7 +171,7 @@ sub backgroundThread {
         # in local time,
 
         if ( $setRandomnessForDay != $mday ) {
-            print STDERR "LightSchedule setting randomness for today: " . $mday
+            print $logFile "LightSchedule setting randomness for today: " . $mday
               . "\n";
             for my $i ( 0 .. scalar(@randomOffset) ) {
                 $randomOffset[$i] = rand($RANDOMRANGE);
@@ -210,7 +212,7 @@ sub backgroundThread {
                 }
                 if ( ${$args}[$i] != 0 ) {
                     if ( $valForThisLightNow != $currentValues[$i] ) {
-                        print STDERR "At "
+                        print $logFile "At "
                           . $hour
                           . " Changing dimmer "
                           . $i . " to "
@@ -251,7 +253,7 @@ sub backgroundThread {
                 }
                 if ( ${$argsIn}[$i] != 0 ) {
                     if ( $valForThisLightNow != $currentValuesI[$i] ) {
-                        print STDERR "At "
+                        print $logFile "At "
                           . $hour
                           . " Changing inside dimmer "
                           . $i . " to "
@@ -278,10 +280,13 @@ sub backgroundThread {
             }
         }
 
+	close $logFile;
+	open ($logFile, ">>", $logFileName);
+
         # dispatch insteon callbacks or wait
         my $evtCount =
           $Modem->monitor(37);   #check slightly less often than once per minute
-        if ($DEBUG) { print STDERR "LightSchedule evtCount: ".$evtCount."\n";}
+        if ($DEBUG) { print $logFile "LightSchedule evtCount: ".$evtCount."\n";}
         if ( $evtCount == 0 ) {
             foreach ( @{$monitors} ) { 
 		$_->{monitor}->onTimer($_, $Modem); 
@@ -294,6 +299,7 @@ sub backgroundThread {
 }
 
 sub LoadSunriseTable {
+    my $logFile = shift;
     my $config = AppConfig->new(
         {
             CREATE => 1,
@@ -338,14 +344,21 @@ sub LoadSunriseTable {
             for ( my $month = 0 ; $month < 12 ; $month++ ) {
                 my $thistime = substr $row, 0, 2;
                 $row = substr $row, 2;
-                $thistime += ( substr $row, 0, 2 ) / 60;
+		my $possibleTime = substr $row, 0, 2;
+		if ($possibleTime ne "  ") {
+                    $thistime += $possibleTime / 60; }
+	        else { $thistime = 0; }
                 $row = substr $row, 3;
                 push @sunrises, $thistime;
                 $thistime = substr $row, 0, 2;
                 $row = substr $row, 2;
-                $thistime += ( substr $row, 0, 2 ) / 60;
-                $row = substr $row, 4;
+		if ($possibleTime ne "  ") {
+                    $thistime += ( substr $row, 0, 2 ) / 60;}
+	        else {$thistime = 0;}
                 push @sunsets, $thistime;
+		if ($month == 11)
+		{    last; }
+                $row = substr $row, 4;
             }
             push @localSunrises, [@sunrises];
             push @localSunsets,  [@sunsets];
@@ -354,21 +367,23 @@ sub LoadSunriseTable {
             @Sunrises       = @localSunrises;
             @Sunsets        = @localSunsets;
             $yearOfSunrises = $yr;
+	    last;
         }
         if ( $dayNum >= 0 ) { $dayNum++; }
     }
 
     #debug printout
     if ($DEBUG) {
-        print STDERR "Year: " . $yearOfSunrises . "\n";
-        for ( my $j = 0 ; $j < scalar(@Sunrises) ; $j++ ) {
-            print STDERR "For day " . $j . " sunrises: ";
-            my $day1 = $Sunrises[$j];
-            for my $k ( 0 .. $#{$day1} ) {
-                print STDERR $Sunrises[$j][$k] . ", " . $Sunsets[$j][$k] . " ";
+        print $logFile "Year: " . $yearOfSunrises . " size:" . scalar(@Sunrises) . "\n";
+	my $j;
+        for ( $j = 0; $j < scalar(@Sunrises); $j++ ) {
+            print $logFile "For day " . ($j + 1) . " sunrise,sunset: ";
+            for (my $k = 0; $k < 12; $k++ ) {
+                print $logFile $Sunrises[$j][$k] . "," . $Sunsets[$j][$k] . " ";
             }
-            print STDERR "\n";
+            print $logFile "\n";
         }
+	print $logFile "End of days\n";
     }
 
     return 0;

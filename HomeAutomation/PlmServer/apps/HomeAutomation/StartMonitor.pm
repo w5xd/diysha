@@ -43,6 +43,7 @@ my $initSchedOnce : shared;
 
 sub start {
     my $logfile = shift;
+    my $scheduleFile = shift;
     my $iCfg    = HomeAutomation::HouseConfigurationInsteon->new();
     my $dev     = $iCfg->get("INSTEON_Modem");
     my $Modem   = PowerLineModule::Modem->new( $dev, 2, $logfile );
@@ -290,6 +291,7 @@ sub start {
             push( @DimmerArray, $OutsideEnable );
             push( @DimmerArray, $SpecialEnable );
             push( @DimmerArray, \@Monitors );
+            push( @DimmerArray, $scheduleFile );
 
             $bck = threads->create(
                 'HomeAutomation::LightSchedule::backgroundThread',
