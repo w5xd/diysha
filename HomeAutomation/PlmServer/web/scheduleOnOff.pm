@@ -93,7 +93,7 @@ if ( defined( $FORM{Update} )
     }
     if ($doS) {
         &HomeAutomation::LightSchedule::turnScheduleOnOff( $inside, $outside,
-            $relay );
+            $relay, undef );
     }
     if ( defined( $FORM{HeatPump} ) ) {
         $nHP = $FORM{HeatPump};

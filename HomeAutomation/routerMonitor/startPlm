@@ -1,0 +1,39 @@
+#!/usr/local/bin/perl
+#
+#started from /etc/init.d/HomeAutomation
+#
+use strict;
+use warnings;
+
+use File::Basename;
+use File::Spec;
+use File::Path qw(make_path);
+
+my $PlmServerPort = 8100;
+
+# setup software install location
+my ($fn, $DIR) = fileparse($0);  #base file specs on location of this script
+	($fn, $DIR) = fileparse(substr($DIR,0,-1));
+        $DIR = substr($DIR, 0, -1); 
+        $DIR = File::Spec->rel2abs($DIR);
+        $ENV{HTTPD_LOCAL_ROOT} = $DIR . "/httpd";
+	require $DIR . '/define_local.pm';
+
+	# setup hardware configuration dependencies
+        my $houseConfigPath = $DIR . '/HouseConfiguration.ini';
+	define_local::SetEnvironmentVariables( $houseConfigPath);
+
+	#thermostat and hvac logs need a home. 
+	if (! -d $ENV{'THERMOSTAT_LOG_LOCATION'}) {
+		make_path($ENV{'THERMOSTAT_LOG_LOCATION'});
+	}
+	if (! -d $ENV{'FURNACE_LOG_LOCATION'}) {
+		make_path($ENV{'FURNACE_LOG_LOCATION'});
+	}
+
+
+	chdir "$DIR/PlmServer";
+	system ("/usr/local/bin/perl -w -I. -I./apps main.pl $PlmServerPort $DIR/httpd/htdocs/insteon/logfile.txt" .
+		" $ENV{FURNACE_LOG_LOCATION}/PlmSchedule.log" .
+		" >$ENV{FURNACE_LOG_LOCATION}/PlmServer.log 2>&1 &");
+

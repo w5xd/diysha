@@ -56,7 +56,7 @@ sub turnScheduleOnOff {
       . " DoOutside= "
       . $DoOutside
       . " DoRelay = "
-      . $DoRelay . "\n";
+      . $DoRelay . "\n" if defined($logFile);
 }
 
 sub getScheduleOnOff {
