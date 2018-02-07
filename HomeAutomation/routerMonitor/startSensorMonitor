@@ -1,0 +1,30 @@
+#!/usr/local/bin/perl
+#
+#started from /etc/init.d/HomeAutomation
+#
+use strict;
+use warnings;
+
+use File::Basename;
+use File::Spec;
+use File::Path qw(make_path);
+
+my $PlmServerPort = 8100;
+
+# setup software install location
+my ($fn, $DIR) = fileparse($0);  #base file specs on location of this script
+	($fn, $DIR) = fileparse(substr($DIR,0,-1));
+        $DIR = substr($DIR, 0, -1); 
+        $DIR = File::Spec->rel2abs($DIR);
+        $ENV{HTTPD_LOCAL_ROOT} = $DIR . "/httpd";
+	require $DIR . '/define_local.pm';
+
+	# setup hardware configuration dependencies
+        my $houseConfigPath = $DIR . '/HouseConfiguration.ini';
+	define_local::SetEnvironmentVariables( $houseConfigPath);
+
+
+        chdir  "$DIR/sensorMonitor";
+	system ('/usr/local/bin/perl -w -I.. monitorSensors '. $houseConfigPath.' >' . 
+		$ENV{FURNACE_LOG_LOCATION} . '/sensorMonitor.log 2>&1 &');
+

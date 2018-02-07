@@ -11,12 +11,16 @@ sub new {
     my $class = shift;
     my $self  = {
         _vars     => shift,
-        _commPort => shift
+        _commPort => shift,
+        _timeOfPoll => time()
     };
     my %nodeList;
     foreach (@_) { $nodeList{$_} = 1; }
     $self->{_nodeList} =
       \%nodeList;    #remainder of arguments are nodes to check for eheat
+    my $sendTest = shift;
+    if (!defined($sendTest)) { $sendTest = 254;}
+    $self->{_sendTest} = $sendTest;
     bless $self, $class;
     return $self;
 }
@@ -66,6 +70,9 @@ sub poll {
                 open( my $fh, ">>", $fn );
                 print $fh $line . "\n";
                 close $fh;
+                $self->{_timeOfPoll} = time();
+            }
+            elsif ((scalar @splitLine == 4) && $splitLine[0] eq "None") {
             }
             else {
                 print STDERR "unprocessed line from Gateway: " . $line . "\n";
@@ -82,6 +89,20 @@ sub poll {
        . "/../hvac/procWirelessGateway "
        . $self->{_commPort} . " DEL $toDelete";
       system $cmd;
+    } else {
+        #if we have no events to delete for an hour, then
+        #send a dummy message out
+        my $now = time();
+        if ($now - $self->{_timeOfPoll} > 3600)
+        {
+            $self->{_timeOfPoll} = $now + rand 3600; #fake future randomness
+            my $cmd =
+                $ENV{HTTPD_LOCAL_ROOT}
+            . "/../hvac/procWirelessGateway "
+            . $self->{_commPort} . " SENDTEST $self->{_sendTest}";
+            print STDERR $cmd . "\n";
+            system $cmd;
+        }
     }
 
     return 1;
