@@ -59,6 +59,8 @@ install XML::Parser
 install AppConfig
 install Switch
 install Math::Round
+install CGI
+install Template
 endOfCPANcommands
 
 echo "**** HomeAutomation downloading boost"
