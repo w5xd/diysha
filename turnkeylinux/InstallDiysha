@@ -61,6 +61,7 @@ a2enmod perl
 a2enmod proxy
 a2enmod xml2enc
 a2enmod proxy_http
+a2enmod headers
 pushd /etc
 ln -s ../init.d/HomeAutomation rc2.d/S02HomeAutomation
 ln -s ../init.d/HomeAutomation rc3.d/S02HomeAutomation
