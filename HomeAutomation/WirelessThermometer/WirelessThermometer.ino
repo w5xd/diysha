@@ -18,9 +18,9 @@
 // Original library: https://www.github.com/lowpowerlab/rfm69
 
 // code only supports a TMP102 sensor or HIH6130 but not both
-//#define USE_TMP102
+#define USE_TMP102
 // The TMP102 has temperature only, -40C to 100C
-#define USE_HIH6130
+//#define USE_HIH6130
 // The HIH6130 has temperature and relative humidity, -20C to 85C
 
 //#define SLEEP_TMP102_ONLY /* for testing only*/
@@ -29,7 +29,7 @@
 #define USE_RFM69
 //#define SLEEP_RFM69_ONLY /* for testing only */
 #define USE_SERIAL
-//#define TELEMETER_BATTERY_V
+#define TELEMETER_BATTERY_V
 
 // Using TIMER2 to sleep costs about 200uA of sleep-time current, but saves the 1uF/10Mohm external parts
 //#define SLEEP_WITH_TIMER2
@@ -51,8 +51,8 @@ const int BATTERY_PIN = A0; // digitize (fraction of) battery voltage
 const int TIMER_RC_GROUND_PIN = 4;
 const int TIMER_RC_PIN = 3; // sleep uProc using RC circuit on this pin
 
-const unsigned long FirstListenAfterTransmitMsec = 20000;// at system reset, listen Serial/RF for this long
-const unsigned long NormalListenAfterTransmit = 300;// after TX, go to RX for this long
+const uint32_t FirstListenAfterTransmitMsec = 20000;// at system reset, listen Serial/RF for this long
+uint32_t NormalListenAfterTransmit = 300;// after TX, go to RX for this long
 
 #if defined(USE_TMP102)
 // Connections to TMP102
@@ -89,37 +89,37 @@ const uint8_t GATEWAY_NODEID = 1;
 class SleepRFM69 : public RFM69
 {
 public:
-	void startAsleep()
-	{
-	  digitalWrite(_slaveSelectPin, HIGH);
-	  pinMode(_slaveSelectPin, OUTPUT);
-	  SPI.begin();
-	  SPIoff();
-	}
+    void startAsleep()
+    {
+      digitalWrite(_slaveSelectPin, HIGH);
+      pinMode(_slaveSelectPin, OUTPUT);
+      SPI.begin();
+      SPIoff();
+    }
 
-	void SPIoff()
-	{
-		// this command drops the idle current by about 100 uA...maybe
-		// I could not get consistent results. so I left it in
-		writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_SLEEP | RF_OPMODE_LISTENABORT);
-		 _mode = RF69_MODE_STANDBY; // force base class do the write
-		sleep();
+    void SPIoff()
+    {
+        // this command drops the idle current by about 100 uA...maybe
+        // I could not get consistent results. so I left it in
+        writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_SLEEP | RF_OPMODE_LISTENABORT);
+         _mode = RF69_MODE_STANDBY; // force base class do the write
+        sleep();
         SPI.end();
 
         // set high impedance for all pins connected to RFM69
         // ...except VDD, of course
-	    pinMode(PIN_SPI_MISO, INPUT);
-	    pinMode(PIN_SPI_MOSI, INPUT);
-	    pinMode(PIN_SPI_SCK, INPUT);
-	    pinMode(PIN_SPI_SS, INPUT);
-	    pinMode(_slaveSelectPin, INPUT);
-	}
-	void SPIon()
-	{
-	  digitalWrite(_slaveSelectPin, HIGH);
-	  pinMode(_slaveSelectPin, OUTPUT);
-	  SPI.begin();
-	}
+        pinMode(PIN_SPI_MISO, INPUT);
+        pinMode(PIN_SPI_MOSI, INPUT);
+        pinMode(PIN_SPI_SCK, INPUT);
+        pinMode(PIN_SPI_SS, INPUT);
+        pinMode(_slaveSelectPin, INPUT);
+    }
+    void SPIon()
+    {
+      digitalWrite(_slaveSelectPin, HIGH);
+      pinMode(_slaveSelectPin, OUTPUT);
+      SPI.begin();
+    }
 };
 // Create a library object for our RFM69HCW module:
 SleepRFM69 radio;
@@ -133,10 +133,14 @@ RadioConfiguration radioConfiguration;
 unsigned long TimeOfWakeup;
 const unsigned MAX_SLEEP_LOOP_COUNT = 5000; // a couple times per day is minimum check-in interval
 unsigned SleepLoopTimerCount = 30; // approx 10 seconds per Count
+
+int SleepCountPos() { return RadioConfiguration::TotalEpromUsed();}
+int ListenAfterTransmitPos() { return SleepCountPos() + sizeof(unsigned); }
 }
 
 void setup()
 {
+    const char * const key = radioConfiguration.EncryptionKey();
 #if defined(USE_SERIAL)
     // Open a serial port so we can send keystrokes to the module:
 
@@ -147,6 +151,20 @@ void setup()
     Serial.print(radioConfiguration.NetworkId(), DEC);
     Serial.print(" band ");
     Serial.print(radioConfiguration.FrequencyBandId(), DEC);
+    if (ENCRYPT) {
+        if (radioConfiguration.encrypted()) {
+            Serial.print(" key "); 
+            for (int i = 0; i < RadioConfiguration::ENCRYPT_KEY_LENGTH; i++)
+            {
+            char c = key[i];
+            if (isprint(c)) Serial.print(c);
+            else
+            {
+               Serial.print(" 0x"); Serial.print((int)(unsigned char)c, HEX); Serial.print(" ");
+            }
+            }
+        }
+    }
     Serial.println(" ready");
 #endif
 
@@ -207,8 +225,8 @@ void setup()
     radio.setHighPower(); // Always use this for RFM69HCW
     // Turn on encryption if desired:
 
-    if (ENCRYPT)
-        radio.encrypt(radioConfiguration.EncryptionKey());
+    if (ENCRYPT && radioConfiguration.encrypted())
+        radio.encrypt(key);
 #else
     radio.startAsleep();
 #endif
@@ -225,9 +243,20 @@ void setup()
     TimeOfWakeup = millis(); // start loop timer now
 
     unsigned eepromLoopCount(0);
-    EEPROM.get(RadioConfiguration::TotalEpromUsed(), eepromLoopCount);
+    EEPROM.get(SleepCountPos(), eepromLoopCount);
     if (eepromLoopCount && eepromLoopCount <= MAX_SLEEP_LOOP_COUNT)
-    	SleepLoopTimerCount = eepromLoopCount;
+        SleepLoopTimerCount = eepromLoopCount;
+#if defined(USE_SERIAL)
+    Serial.print("SleepLoopTimerCount = "); Serial.println(SleepLoopTimerCount, DEC);
+#endif
+
+    uint32_t law;
+    EEPROM.get(ListenAfterTransmitPos(), law);
+    if (law != 0xffffffffl)
+        NormalListenAfterTransmit = law;
+#if defined(USE_SERIAL)
+    Serial.print("ListenAfterTransmitMsec = "); Serial.println(NormalListenAfterTransmit, DEC);
+#endif
 }
 
 /* Power management:
@@ -239,16 +268,17 @@ void setup()
 namespace {
     unsigned SleepTilNextSample();
 
-    unsigned long ListenAfterTransmitMsec = FirstListenAfterTransmitMsec;
+    uint32_t ListenAfterTransmitMsec = FirstListenAfterTransmitMsec;
     unsigned int sampleCount;
 
     bool processCommand(const char *pCmd)
     {
         static const char SET_LOOPCOUNT[] = "SetDelayLoopCount";
+        static const char SET_LISTENAFTERXMIT[] = "SetListenAfterTransmit";
         if (strncmp(pCmd, SET_LOOPCOUNT, sizeof(SET_LOOPCOUNT) - 1) == 0)
         {
             pCmd = RadioConfiguration::SkipWhiteSpace(
-            		pCmd +	sizeof(SET_LOOPCOUNT)-1);
+                    pCmd +  sizeof(SET_LOOPCOUNT)-1);
             if (pCmd)
             {
                 unsigned v = RadioConfiguration::toDecimalUnsigned(pCmd);
@@ -256,7 +286,19 @@ namespace {
                 if (v && v < MAX_SLEEP_LOOP_COUNT)
                 {
                     SleepLoopTimerCount = v;
-                    EEPROM.put(RadioConfiguration::TotalEpromUsed(), SleepLoopTimerCount);
+                    EEPROM.put(SleepCountPos(), SleepLoopTimerCount);
+                    return true;
+                }
+            }
+        } else if (strncmp(pCmd, SET_LISTENAFTERXMIT, sizeof(SET_LISTENAFTERXMIT)-1) == 0)
+        {
+            pCmd = RadioConfiguration::SkipWhiteSpace(pCmd + sizeof(SET_LISTENAFTERXMIT)-1);
+            if (pCmd)
+            {
+                uint32_t v = RadioConfiguration::toDecimalUnsigned(pCmd);
+                if (v) {
+                     NormalListenAfterTransmit = v;
+                     EEPROM.put(ListenAfterTransmitPos(), v);
                     return true;
                 }
             }
@@ -341,7 +383,7 @@ void loop()
         if (processCommand((const char *)&radio.DATA[0]))
         {
 #if defined(USE_SERIAL)
-        	Serial.println("Received command accepted");
+            Serial.println("Received command accepted");
 #endif
         }
         if (radio.ACKRequested())
@@ -441,8 +483,8 @@ void loop()
             batt,
             sign, whole,
             (int)(100.f * (temperature - whole)),
-			wholeRh,
-			(int)(100.f * (humidity - wholeRh)));
+            wholeRh,
+            (int)(100.f * (humidity - wholeRh)));
 #if defined(USE_SERIAL)
         Serial.println(buf);
 #endif
@@ -462,7 +504,7 @@ void loop()
 }
 
 #if !defined(SLEEP_WITH_TIMER2)
-void sleepPinInterrupt()	// requires 1uF and 10M between two pins
+void sleepPinInterrupt()    // requires 1uF and 10M between two pins
 {
     detachInterrupt(digitalPinToInterrupt(TIMER_RC_PIN));
 }
@@ -558,7 +600,7 @@ namespace {
             sleep_enable();
             sleep_bod_disable();
             sei();
-            sleep_cpu();	// 280 uA -- steady without RFM69
+            sleep_cpu();    // 280 uA -- steady without RFM69
             sleep_disable();
             sei();
             count += 1;
@@ -587,12 +629,12 @@ namespace {
     }
 
 #if defined(TELEMETER_BATTERY_V)
-	void ResetAnalogReference()
-	{
-		analogReference(INTERNAL);
-		pinMode(BATTERY_PIN, INPUT);
-		analogRead(BATTERY_PIN);
-		delay(10); // let ADC settle
-	}
+    void ResetAnalogReference()
+    {
+        analogReference(INTERNAL);
+        pinMode(BATTERY_PIN, INPUT);
+        analogRead(BATTERY_PIN);
+        delay(10); // let ADC settle
+    }
 #endif
 }
