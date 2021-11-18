@@ -34,8 +34,8 @@
 ** delete all the messages we processed from the store-and-forward
 ** queue in the WirelessGateway.
 */
-static void GetMessages(w5xdInsteon::PlmMonitorIO &modem);
-static void DeleteFromGateway(w5xdInsteon::PlmMonitorIO &modem, unsigned oldestMessageId);
+static void GetMessages(w5xdInsteon::PlmMonitorIO& modem);
+static void DeleteFromGateway(w5xdInsteon::PlmMonitorIO& modem, unsigned oldestMessageId);
 
 int main(int argc, char* argv[])
 {
@@ -49,20 +49,18 @@ int main(int argc, char* argv[])
         {
             if (argc == 3)
                 doGet = true;
-        }
-        else if (strcmp("DEL", argv[2]) == 0)
+        } else if (strcmp("DEL", argv[2]) == 0)
         {
             if (argc == 4)
             {
                 doDelete = true;
                 oldestToDelete = atoi(argv[3]);
             }
-        } 
-        else if (strcmp("SENDTEST", argv[2]) == 0)
-        { 
-             sendTest = 254;
-             if (argc > 3)
-               sendTest = atoi(argv[3]);
+        } else if (strcmp("SENDTEST", argv[2]) == 0)
+        {
+            sendTest = 254;
+            if (argc > 3)
+                sendTest = atoi(argv[3]);
         }
     }
     if (!doGet && !doDelete && sendTest <= 0)
@@ -86,24 +84,23 @@ int main(int argc, char* argv[])
     else if (doDelete)
         DeleteFromGateway(modem, oldestToDelete);
     else if (sendTest > 0)
-    {  
-         std::ostringstream oss;
-         oss << "SendMessageToNode " << sendTest << " test\r";
-         modem.Write((const unsigned char*)oss.str().c_str(), oss.str().length());
+    {
+        std::ostringstream oss;
+        oss << "SendMessageToNode " << sendTest << " test\r";
+        modem.Write((const unsigned char*)oss.str().c_str(), oss.str().length());
     }
     return 0;
 }
 
 // parsing function helper. search for unsigned integer in decimal, followed by space char
-static bool parseForUnsigned(char c, unsigned &target, unsigned &counter, bool &error, bool ignoreSign=false)
+static bool parseForUnsigned(char c, unsigned& target, unsigned& counter, bool& error, bool ignoreSign = false)
 {
     if (isdigit(c))
     {
         target *= 10;
         target += c - '0';
         counter += 1;
-    }
-    else if (ignoreSign && c == '-' && counter == 0) // ignore
+    } else if (ignoreSign && c == '-' && counter == 0) // ignore
         counter += 1;
     else
     {
@@ -117,7 +114,7 @@ static bool parseForUnsigned(char c, unsigned &target, unsigned &counter, bool &
 }
 
 // parsing function for fixed string. Search for exactly the string provided
-static bool parseForString(char c, const char *Text, size_t TextSize, unsigned &counter, bool &error)
+static bool parseForString(char c, const char* Text, size_t TextSize, unsigned& counter, bool& error)
 {
     if (c == Text[counter])
     {
@@ -125,22 +122,20 @@ static bool parseForString(char c, const char *Text, size_t TextSize, unsigned &
         {
             counter = 0;
             return true;
-        }
-        else
+        } else
             counter++;
-    }
-    else
+    } else
         error = true;
     return false;
 }
 
 static const size_t BUFSIZE = 1024;
 
-static void GetMessages(w5xdInsteon::PlmMonitorIO &modem)
+static void GetMessages(w5xdInsteon::PlmMonitorIO& modem)
 {
     // send the command to the WirelessGateway
     static const char GETMESSAGES[] = "GetMessages\r";
-    modem.Write((unsigned char *)GETMESSAGES, sizeof(GETMESSAGES) - 1);
+    modem.Write((unsigned char*)GETMESSAGES, sizeof(GETMESSAGES) - 1);
 
     // read its answers until we go a time with no answer
     std::vector<std::string> results;
@@ -164,37 +159,39 @@ static void GetMessages(w5xdInsteon::PlmMonitorIO &modem)
                 if (!partial.empty())
                     results.push_back(partial);
                 partial.clear();
-            }
-            else
+            } else
                 partial += c;
         }
     }
 
     /* GetMessages responds like this:
-          Gateway messad id
+QueueBegin
+Queue 53 148 REC -69 99 Ti:56.5 To:56.5 Ts:-28.8 2021-11-17T22:23:36
+Queue 54 35 REC -70 99 Ti:56.5 To:56.5 Ts:-28.8 2021-11-17T22:25:29
+Queue 55 5 REC -70 99 HVi=--------- HVo=--------- 2021-11-17T22:25:29
+Queue 56 5299 REC -59 3 C:44, B:263, T:+20.31
+Queue 57 5287 REC -28 4 C:22, B:282, T:+21.18
+Queue 58 5027 REC -59 3 C:45, B:264, T:+20.37
+Queue 59 4916 REC -28 4 C:23, B:282, T:+21.18
+Queue 60 4755 REC -58 3 C:46, B:264, T:+20.56
+Queue 61 3 REC -28 6 C:0, B:273, T:+26.18 R:58.27
+QueueEnd
+QueueBytesFree 9
+
+          Gateway tag "QUEUE"
           Seconds ago it logged into the gateway
-          RECeived message from network
+          REC eived message from network
           RSSI of received message
           NodeId received from
+
+      Contents of message:
           Wireless Thermometer internal count
           Wireless Thermomenter battery indicator
           Temperature in C
-          QueueBegin
-          Queue 33 5299 REC -59 3 C:44, B:263, T:+20.31
-          Queue 34 5287 REC -28 4 C:22, B:282, T:+21.18
-          Queue 35 5027 REC -59 3 C:45, B:264, T:+20.37
-          Queue 36 4916 REC -28 4 C:23, B:282, T:+21.18
-          Queue 37 4755 REC -58 3 C:46, B:264, T:+20.56
-          QueueEnd
-          QueueBytesFree 9
-          */
+         */
 
-    /*   or with humidity sensor
-          Queue 44 3 REC -28 6 C:0, B:273, T:+26.18 R:58.27
-     */
-
-    // unix-style time formatter
-    struct tm *local;
+         // unix-style time formatter
+    struct tm* local;
     time_t now;
     now = time(NULL);
 
@@ -208,11 +205,12 @@ static void GetMessages(w5xdInsteon::PlmMonitorIO &modem)
         QUEUE, MSGID, AGE, REC, RSSI, NODEID,
         NODECOUNT1, NODECOUNT2, NODECOUNT3,
         NODEBATTERY1, NODEBATTERY2, NODEBATTERY3,
-        NODETEMPERATURE1, NODETEMPERATURE2, NODE_RH1, NODE_RH2, NODE_RH3, PARSE_SUCCESS
+        NODETEMPERATURE1, NODETEMPERATURE2, NODE_RH1, NODE_RH2, NODE_RH3, PARSE_SUCCESS,
+        HVACNODE1, HVACNODE2
     };
 
     // for every line in the gateway response..
-    for (auto &line : results)
+    for (auto& line : results)
     {
         // looking for WirelessThermometer reports in the gateway.
         // They are of this form:
@@ -233,18 +231,22 @@ static void GetMessages(w5xdInsteon::PlmMonitorIO &modem)
         bool negRssi(false);
         float tempC(-99.f);
         float humidityPercent(-1.f);
+        std::string hvacreport;
+        float Ti(0), To(0), Ts(0);
 
         unsigned lineIdx(0); // count characters in the line
-
-        for (auto const &c : line)
+        for (auto const& c : line)
         {
             // delimiters inside a message from WirelessThermometer
             static const char QText[] = "Queue ";
             static const char RText[] = "REC ";
             static const char CText[] = "C:";
+            static const char TiText[] = "Ti:";
+            static const char HviText[] = "HVi=";
             static const char BText[] = "B:";
             static const char TText[] = "T:";
             static const char RhText[] = "R:";
+
 
             bool error(false);// error flag for this character. aborts line processing
             switch (state)
@@ -274,20 +276,45 @@ static void GetMessages(w5xdInsteon::PlmMonitorIO &modem)
                 {
                     negRssi = true;
                     counter += 1;
-                }
-                else if (parseForUnsigned(c, rssi, counter, error))
+                } else if (parseForUnsigned(c, rssi, counter, error))
                     state = NODEID;
                 break;
 
             case NODEID:
                 if (parseForUnsigned(c, nodeId, counter, error))
                     state = NODECOUNT1;
-
                 break;
 
             case NODECOUNT1:
+                hvacreport.push_back(c);
                 if (parseForString(c, CText, sizeof(CText), counter, error))
                     state = NODECOUNT2;
+                else if (error && (error = false, parseForString(c, TiText, sizeof(TiText), counter, error)))
+                {
+                    const char* q = strstr(line.c_str(), "Ti:");
+                    if (q)
+                    {
+                        Ti = atof(q + 3);
+                        q = strstr(line.c_str(), "To:");
+                        if (q)
+                        {
+                            To = atof(q + 3);
+                            q = strstr(line.c_str(), "Ts:");
+                            if (q)
+                                Ts = atof(q + 3);
+                        }
+                    }
+                    state = HVACNODE1;
+                } else if (error && (error = false, parseForString(c, HviText, sizeof(HviText), counter, error)))
+                    state = HVACNODE2;
+                if (error)
+                    hvacreport.clear();
+                break;
+
+            case HVACNODE2:
+                hvacreport.push_back(c);
+                break;
+            case HVACNODE1:
                 break;
 
             case NODECOUNT2:
@@ -299,8 +326,7 @@ static void GetMessages(w5xdInsteon::PlmMonitorIO &modem)
                         error = false;
                         state = NODECOUNT3;
                         counter = 0;
-                    }
-                    else
+                    } else
                         state = NODEBATTERY1;
                 }
                 break;
@@ -326,8 +352,7 @@ static void GetMessages(w5xdInsteon::PlmMonitorIO &modem)
                         error = false;
                         state = NODEBATTERY3;
                         counter = 0;
-                    }
-                    else
+                    } else
                         state = NODETEMPERATURE1;
                 }
                 break;
@@ -369,55 +394,66 @@ static void GetMessages(w5xdInsteon::PlmMonitorIO &modem)
                 break;
 
             case NODE_RH3:
+            {
+                std::string humidityStr = line.substr(lineIdx);
+                if (!humidityStr.empty())
                 {
-                    std::string humidityStr = line.substr(lineIdx);
-                    if (!humidityStr.empty())
-                    {
-                        humidityPercent = (float)(atof(humidityStr.c_str()));
-                        state = PARSE_SUCCESS;
-                    }
+                    humidityPercent = (float)(atof(humidityStr.c_str()));
+                    state = PARSE_SUCCESS;
                 }
-                break;
+            }
+            break;
             }
             lineIdx += 1;
 
             if (error)
                 break;
         } // for (auto const &c : line)
-        
+
         // if we parsed OK
         // Deal with success, and break the for(:line) loop 
         if (static_cast<int>(state) >= static_cast<int>(NODE_RH1))
         {
             foundEntryToDelete = true;
             oldestMessageId = messageId;
-
-            time_t thisEvent = now - age; // account for time inside gateway
-            local = localtime(&thisEvent);
-            char buf[64];
-            // old unix-style time string for first two columns in log
-            sprintf(buf, "%04d/%02d/%02d %02d:%02d:%02d",
-                local->tm_year + 1900,
-                local->tm_mon + 1,
-                local->tm_mday,
-                local->tm_hour,
-                local->tm_min,
-                local->tm_sec);
-
-            short rssiVal = negRssi ? -(short)rssi : rssi;
-
             std::ostringstream oss;
-            oss << nodeId << " " << buf << " " << std::fixed << std::setw(6) << std::setprecision(2) << 
-                tempC / 5.f * 9.f + 32.f << // present as farenheit
-                " " <<
-                nodeBattery << " " <<
-                rssiVal << " " <<
-                nodeCount;
-            if (humidityPercent > 0.f)
-                oss << " " << humidityPercent;
+
+            if (static_cast<int>(state) < static_cast<int>(HVACNODE1))
+            {
+                time_t thisEvent = now - age; // account for time inside gateway
+                local = localtime(&thisEvent);
+                char buf[64];
+                // old unix-style time string for first two columns in log
+                sprintf(buf, "%04d/%02d/%02d %02d:%02d:%02d",
+                    local->tm_year + 1900,
+                    local->tm_mon + 1,
+                    local->tm_mday,
+                    local->tm_hour,
+                    local->tm_min,
+                    local->tm_sec);
+
+                short rssiVal = negRssi ? -(short)rssi : rssi;
+
+                oss << nodeId << " " << buf << " " << std::fixed << std::setw(6) << std::setprecision(2) <<
+                    tempC / 5.f * 9.f + 32.f << // present as farenheit
+                    " " <<
+                    nodeBattery << " " <<
+                    rssiVal << " " <<
+                    nodeCount;
+                if (humidityPercent > 0.f)
+                    oss << " " << humidityPercent;
+            } else if (state == HVACNODE2)
+            {
+                oss << nodeId << " HVAC " << hvacreport;
+            } else if (state == HVACNODE1)
+            {
+                oss << nodeId << " HVAC Ti=" << 32.0 + Ti * 9.0 / 5.0 <<
+                    " To=" << 32.0 + To * 9.0 / 5.0 <<
+                    " Ts=" << 32.0 + Ts * 9.0 / 5.0;
+            }
             std::cout << oss.str() << std::endl;
         }
-   }
+    }
     if (foundEntryToDelete)
         std::cout << "Found delete: " << oldestMessageId << std::endl;
     else
@@ -425,12 +461,12 @@ static void GetMessages(w5xdInsteon::PlmMonitorIO &modem)
     std::cout << std::flush;
 }
 
-static void DeleteFromGateway(w5xdInsteon::PlmMonitorIO &modem, unsigned oldestMessageId)
+static void DeleteFromGateway(w5xdInsteon::PlmMonitorIO& modem, unsigned oldestMessageId)
 {
     // Tell WirelessGateway we processed the messages and we won't see them in a future run
     std::ostringstream msg;
     msg << "DeleteMessagesFromId " << oldestMessageId << "\r";
-    modem.Write(const_cast<unsigned char *>(reinterpret_cast<const unsigned char *>(msg.str().c_str())), msg.str().length());
+    modem.Write(const_cast<unsigned char*>(reinterpret_cast<const unsigned char*>(msg.str().c_str())), msg.str().length());
     // a bit for modem to respond
     std::string response;
     std::unique_ptr<unsigned char[]> buf(new unsigned char[BUFSIZE]);
@@ -438,7 +474,7 @@ static void DeleteFromGateway(w5xdInsteon::PlmMonitorIO &modem, unsigned oldestM
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         unsigned w;
-       if (!modem.Read(buf.get(), BUFSIZE, &w))
+        if (!modem.Read(buf.get(), BUFSIZE, &w))
             break;
         if (w == 0)
             break; // timed out--didn't get anything so we're done  
