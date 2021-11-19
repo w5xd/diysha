@@ -1,9 +1,9 @@
 [submodule "HomeAutomation/w5xdInsteon"]
 	path = HomeAutomation/w5xdInsteon
 	url = git://github.com/w5xd/plm.git
-[submodule "HomeAutomation\\WirelessGateway"]
-	path = HomeAutomation\\WirelessGateway
+[submodule "HomeAutomation/WirelessGateway"]
+	path = HomeAutomation/WirelessGateway
 	url = https://github.com/w5xd/PacketGateway.git
-[submodule "HomeAutomation\\WirelessThermometer"]
-	path = HomeAutomation\\WirelessThermometer
+[submodule "HomeAutomation/WirelessThermometer"]
+	path = HomeAutomation/WirelessThermometer
 	url = https://github.com/w5xd/PacketThermometer.git
