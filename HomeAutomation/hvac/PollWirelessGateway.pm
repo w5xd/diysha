@@ -62,11 +62,14 @@ sub poll {
                     $line = "";
                     foreach (@splitLine) { $line .= $_ . ' '; }
                     if ( $splitLine[0] eq "HVAC" ) {
-			my $fnbase = "/HvacFurnace";
-			if ($splitLine[1] =~ m/^Ti=/ ) {
-			    $fnbase = "/HvacTemperature"; }
-                        my $fn = $self->{_vars}->{FURNACE_LOG_LOCATION}
-                          . $fnbase . $nodeId. ".log";
+                        my $fnbase = "/HvacFurnace";
+                        if ( $splitLine[1] =~ m/^Ti=/ ) {
+                            $fnbase = "/HvacTemperature";
+                        }
+                        my $fn =
+                            $self->{_vars}->{FURNACE_LOG_LOCATION}
+                          . $fnbase
+                          . $nodeId . ".log";
                         open( my $fh, ">>", $fn );
                         print $fh $line . "\n";
                         close $fh;
@@ -74,7 +77,7 @@ sub poll {
                     }
                 }
 
-                if ( scalar @splitLine >= 7 ) {
+                if ( scalar @splitLine >= 6 ) {
 
                     #did INI file say this is an outside temperature?
                     my %recover = %{ $self->{_nodeList} };
