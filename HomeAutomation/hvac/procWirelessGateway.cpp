@@ -417,14 +417,11 @@ QueueBytesFree 9
             foundEntryToDelete = true;
             oldestMessageId = messageId;
             std::ostringstream oss;
-
-            if (static_cast<int>(state) < static_cast<int>(HVACNODE1))
-            {
-                time_t thisEvent = now - age; // account for time inside gateway
-                local = localtime(&thisEvent);
-                char buf[64];
+            time_t thisEvent = now - age; // account for time inside gateway
+            local = localtime(&thisEvent);
+            char buf[64];
                 // old unix-style time string for first two columns in log
-                sprintf(buf, "%04d/%02d/%02d %02d:%02d:%02d",
+            sprintf(buf, "%04d/%02d/%02d %02d:%02d:%02d",
                     local->tm_year + 1900,
                     local->tm_mon + 1,
                     local->tm_mday,
@@ -432,8 +429,10 @@ QueueBytesFree 9
                     local->tm_min,
                     local->tm_sec);
 
-                short rssiVal = negRssi ? -(short)rssi : rssi;
+            short rssiVal = negRssi ? -(short)rssi : rssi;
 
+            if (static_cast<int>(state) < static_cast<int>(HVACNODE1))
+            {
                 oss << nodeId << " " << buf << " " << std::fixed << std::setw(6) << std::setprecision(2) <<
                     tempC / 5.f * 9.f + 32.f << // present as farenheit
                     " " <<
@@ -444,10 +443,10 @@ QueueBytesFree 9
                     oss << " " << humidityPercent;
             } else if (state == HVACNODE2)
             {
-                oss << nodeId << " HVAC " << hvacreport;
+                oss << nodeId << " " << buf << " " << rssiVal << " HVAC " << hvacreport;
             } else if (state == HVACNODE1)
             {
-                oss << nodeId << " HVAC Ti=" << 32.0 + Ti * 9.0 / 5.0 <<
+                oss << nodeId << " " << buf << " " << rssiVal << " HVAC Ti=" << 32.0 + Ti * 9.0 / 5.0 <<
                     " To=" << 32.0 + To * 9.0 / 5.0 <<
                     " Ts=" << 32.0 + Ts * 9.0 / 5.0;
             }
