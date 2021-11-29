@@ -62,16 +62,26 @@ sub poll {
                     $line = "";
                     foreach (@splitLine) { $line .= $_ . ' '; }
                     if ( $splitLine[3] eq "HVAC" ) {
+                        my $furnace = 0;
                         my $fnbase = "/HvacFurnace";
                         if ( $splitLine[4] =~ m/^Ti=/ ) {
                             $fnbase = "/HvacTemperature";
+                        } elsif ($splitLine[5] =~ m/^HVo=/) {
+                           my $hvo = substr($splitLine[5], 4);
+                           if (substr($hvo, 1, 1) eq "d") { $furnace += 1;}
+                           if (substr($hvo, 2, 1) eq "G") { $furnace += 2;}
+                           if (substr($hvo, 3, 1) eq "W") { $furnace += 4;}
+                           if (substr($hvo, 4, 2) eq "Y2") { $furnace += 8;}
+                           if (substr($hvo, 6, 1) eq "Y") { $furnace += 16;}
+                           if (substr($hvo, 7, 1) eq "O") { $furnace += 32;}
                         }
+                        
                         my $fn =
                             $self->{_vars}->{FURNACE_LOG_LOCATION}
                           . $fnbase
                           . $nodeId . ".log";
                         open( my $fh, ">>", $fn );
-                        print $fh $line . "\n";
+                        print $fh $line . " " . $furnace . "\n";
                         close $fh;
                         next;
                     }
