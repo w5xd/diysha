@@ -10,9 +10,10 @@ use strict;
 sub new {
     my $class = shift;
     my $self  = {
-        _vars       => shift,
-        _commPort   => shift,
-        _timeOfPoll => time()
+        _vars           => shift,
+        _commPort       => shift,
+        _timeOfPoll     => time(),    # first poll
+        _furnaceOnFlags => {},
     };
     my %nodeList;
     foreach (@_) { $nodeList{$_} = 1; }
@@ -39,10 +40,10 @@ sub poll {
     $my_reader->autoflush(1);
     close $my_writer;
 
-    #format of stdout from procWirelessGateway looks like:
-    #3 2017/02/26 21:13:27  65.62 262 -72 123
-    #4 2017/02/26 21:14:11  71.92 283 -85 80
-    #Found delete: 31
+#format of stdout from procWirelessGateway looks like (first column is packet node #)
+#3 2017/02/26 21:13:27  65.62 262 -72 123
+#4 2017/02/26 21:14:11  71.92 283 -85 80
+#Found delete: 31
     while ( my $line = <$my_reader> ) {
         if ( $line =~ /^Found delete:\s/ ) {
             $toDelete = substr( $line, 14 );
@@ -63,19 +64,36 @@ sub poll {
                     foreach (@splitLine) { $line .= $_ . ' '; }
                     if ( $splitLine[3] eq "HVAC" ) {
                         my $furnace = 0;
-                        my $fnbase = "/HvacFurnace";
+                        my $fnbase  = "/HvacFurnace";
                         if ( $splitLine[4] =~ m/^Ti=/ ) {
                             $fnbase = "/HvacTemperature";
-                        } elsif ($splitLine[5] =~ m/^HVo=/) {
-                           my $hvo = substr($splitLine[5], 4);
-                           if (substr($hvo, 1, 1) eq "d") { $furnace += 1;}
-                           if (substr($hvo, 2, 1) eq "G") { $furnace += 2;}
-                           if (substr($hvo, 3, 1) eq "W") { $furnace += 4;}
-                           if (substr($hvo, 4, 2) eq "Y2") { $furnace += 8;}
-                           if (substr($hvo, 6, 1) eq "Y") { $furnace += 16;}
-                           if (substr($hvo, 7, 1) eq "O") { $furnace += 32;}
                         }
-                        
+                        elsif ( $splitLine[5] =~ m/^HVo=/ ) {
+                            my $hvo = substr( $splitLine[5], 4 );
+                            if ( substr( $hvo, 1, 1 ) eq "d" ) {
+                                $furnace += 1;
+                            }
+                            if ( substr( $hvo, 2, 1 ) eq "G" ) {
+                                $furnace += 2;
+                            }
+                            if ( substr( $hvo, 3, 1 ) eq "W" ) {
+                                $furnace += 4;
+                            }
+                            if ( substr( $hvo, 4, 2 ) eq "Y2" ) {
+                                $furnace += 8;
+                            }
+
+                            if ( substr( $hvo, 6, 1 ) eq "Y" ) {
+                                $furnace += 16;
+                            }
+                            if ( substr( $hvo, 7, 1 ) eq "O" ) {
+                                $furnace += 32;
+                            }
+                            my $now = time();
+                            $self->{_furnaceOnFlags}{$nodeId} =
+					 [$furnace,$now];    #save value for repetition
+                        }
+
                         my $fn =
                             $self->{_vars}->{FURNACE_LOG_LOCATION}
                           . $fnbase
@@ -137,6 +155,35 @@ sub poll {
               . " SENDTEST $self->{_sendTest}";
             print STDERR $cmd . "\n";
             system $cmd;
+        }
+    }
+
+    #process _furnaceOnFlags. repeat previously acquired non-zero
+    #furnace output so the plotter does something pretty with it
+    my $furnaceOnFlags = $self->{_furnaceOnFlags};
+    foreach (keys %$furnaceOnFlags) {
+        my $nodeId = $_;
+        my $entry = $furnaceOnFlags->{$nodeId};
+        my $now = time();
+        if (($now - $entry->[1]) < (5 * 60)) { next; }
+        my $furnace = $entry->[0];
+        if ($furnace > 0 ) {
+            $self->{_furnaceOnFlags}{$nodeId} = [$furnace, $now];
+            my $fn =
+                $self->{_vars}->{FURNACE_LOG_LOCATION}
+              . "/HvacFurnace"
+              . $nodeId . ".log";
+            open( my $fh, ">>", $fn );
+            (
+                my $sec,  my $min,  my $hour, my $mday, my $mon,
+                my $year, my $wday, my $yday, my $isdst
+            ) = localtime();
+            my $stamp = sprintf '%04d/%02d/%02d %02d:%02d:%02d', $year + 1900,
+              $mon + 1, $mday, $hour, $min, $sec;
+            print $fh $stamp
+              . " 000 HVAC HVi=          HVo=          xxxxxxxxxxxxxxxxxxx  "
+              . $furnace . "\n";
+            close $fh;
         }
     }
 
