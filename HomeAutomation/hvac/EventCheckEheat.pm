@@ -47,6 +47,16 @@ sub temperatureEvent {
     my @record = ( time, $temperatureF );    #time stamped observation
     $records->{$source} = \@record;
 
+    my $minTempfname = $ENV{HTTPD_LOCAL_ROOT} . "/run/HEATPUMP_MIN.txt";
+    if ( open( HPFILE, "<$minTempfname" ) ) {
+        while (<HPFILE>) {
+            chomp;
+            $minTemp = $_;
+            last;
+        }
+        close(HPFILE);
+    }
+
     #go through
     my $valid = 0;
     my $now   = time;

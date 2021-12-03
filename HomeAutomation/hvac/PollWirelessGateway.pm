@@ -99,7 +99,15 @@ sub poll {
                             $splitLine[6] = substr( $splitLine[6], 3 );
                             foreach (@splitLine) { $line .= $_ . " "; }
                             if ( exists( $eheatList{$nodeId} ) ) {
-                                push @{$self->{_lastTemperatures}}, $splitLine[6];
+				my $filterHoneywell = $self->{_filterHoneywell};
+				if (!defined($filterHoneywell)) {
+					$filterHoneywell = $splitLine[6];
+				}
+				$filterHoneywell *= 9;
+				$filterHoneywell += $splitLine[6];
+				$filterHoneywell /= 10;
+				$self->{_filterHoneywell} = $filterHoneywell;
+                                push @{$self->{_lastTemperatures}}, $filterHoneywell;
                                 push @{$self->{_lastTemperatures}}, $nodeId;
                             }
                         }
