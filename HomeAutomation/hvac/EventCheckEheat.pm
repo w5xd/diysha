@@ -1,4 +1,5 @@
-# perl class to call the pcsensor USB device
+# perl class to call the various classes that can report outdoor temperature
+# HouseConfiguration.ini declares them in [SENSOR_MONITOR_STARTUP]
 
 package hvac::EventCheckEheat;
 
@@ -9,7 +10,7 @@ sub new {
     my $class = shift;
     my $self  = {
         _vars    => shift,
-        _records => {}, # to test: { TODELETE => [ time - 3590, "25.3" ], },
+        _records => {},     # to test: { TODELETE => [ time - 3590, "25.3" ], },
     };
     my $minTemp = $self->{_vars}->{HEATPUMP_MIN_TEMPERATURE_F};
     $minTemp = Math::Round::nearest( 1, $minTemp );
@@ -65,20 +66,57 @@ sub temperatureEvent {
         }
     }
 
-    my $FURNACE_LOGIN = $self->{_vars}->{FURNACE_LOGIN};
-    my $FURNACE_IP    = $self->{_vars}->{FURNACE_IP};
     my $cmd;
-    if ( $min < $minTemp ) {
-        $cmd =
+    my $FURNACE_LOGIN = $self->{_vars}->{FURNACE_LOGIN};
+    if ( !defined($FURNACE_LOGIN) || $FURNACE_LOGIN eq "" )
+    {    #use WirelessGateway to talk to Packet Thermostat
+        my $cmdBase =
+            $ENV{HTTPD_LOCAL_ROOT}
+          . "/../hvac/procWirelessGateway "
+          . $self->{_vars}->{FURNACE_GATEWAY_DEVICE}
+          . " SEND "
+          . $self->{_vars}->{FURNACE_NODEID}
+          . " HVAC TYPE=";
+        if ( $min < $minTemp ) {
+            $cmd = $cmdBase . "1 MODE=0";    # set to NoHP
+        }
+        elsif ( $min > $minTemp ) {
+            $cmd = $cmdBase . "0 MODE=0";    # set to PasT
+        }
+    }
+    else {                                   #use curl to talk to modtronix
+        my $FURNACE_IP = $self->{_vars}->{FURNACE_IP};
+        if ( $min < $minTemp ) {
+            $cmd =
 "curl --max-time 30 --silent $FURNACE_LOGIN http://$FURNACE_IP/nothing?xr5=1 > /dev/null 2>&1";
-    }
+        }
 
-    #note that $min == $minTemp is NOT processed
-    elsif ( $min > $minTemp ) {
-        $cmd =
+        #note that $min == $minTemp is NOT processed
+        elsif ( $min > $minTemp ) {
+            $cmd =
 "curl --max-time 30 --silent $FURNACE_LOGIN http://$FURNACE_IP/nothing?xr5=0 > /dev/null 2>&1";
+        }
     }
-    if ( defined $cmd ) { system($cmd); }
+    if ( defined $cmd ) {
+        my $now     = time();
+        my $lastCmd = $self->{_lastCmd};
+        if (
+            !(
+                   defined($lastCmd)
+                && ( $now - ${$lastCmd}[0] < 10 * 60 )
+                && $cmd eq ${$lastCmd}[1]
+            )
+          )
+        {
+            system($cmd);
+
+            #print STDERR "cmd = " . $cmd . "\n";
+            $self->{_lastCmd} = [ $now, $cmd ];
+        }
+        else {
+            #print STDERR "skipping cmd " . $cmd . "\n";
+        }
+    }
 }
 
 1;

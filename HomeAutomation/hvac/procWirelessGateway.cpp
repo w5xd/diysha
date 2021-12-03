@@ -42,7 +42,8 @@ int main(int argc, char* argv[])
     unsigned oldestToDelete(0);
     bool doDelete(false);
     bool doGet(false);
-    int sendTest = -1;
+    int sendNodeId = -1;
+    std::string messageForNode = "test";
     if (argc > 2)
     {
         if (strcmp("GET", argv[2]) == 0)
@@ -58,14 +59,27 @@ int main(int argc, char* argv[])
             }
         } else if (strcmp("SENDTEST", argv[2]) == 0)
         {
-            sendTest = 254;
+            sendNodeId = 254;
             if (argc > 3)
-                sendTest = atoi(argv[3]);
+                sendNodeId = atoi(argv[3]);
+        } else if (strcmp("SEND", argv[2]) == 0)
+        {
+	   if (argc < 4)
+		  std::cerr << "SEND requires node id" << std::endl;
+	   else { 
+                sendNodeId = atoi(argv[3]);
+		messageForNode = "";
+		for (int i = 4; i < argc; i++)
+		{
+			messageForNode += argv[i];
+			messageForNode += " ";
+		}
+	   }
         }
     }
-    if (!doGet && !doDelete && sendTest <= 0)
+    if (!doGet && !doDelete && sendNodeId <= 0)
     {
-        std::cerr << "Usage: procWirelessGateway <COMPORT> GET | DEL | SENDTEST <N>" << std::endl;
+        std::cerr << "Usage: procWirelessGateway <COMPORT> GET | DEL | SEND [N] [cmd] | SENDTEST <N>" << std::endl;
         return 1;
     }
     std::string comport;
@@ -83,10 +97,10 @@ int main(int argc, char* argv[])
         GetMessages(modem);
     else if (doDelete)
         DeleteFromGateway(modem, oldestToDelete);
-    else if (sendTest > 0)
+    else if (sendNodeId > 0)
     {
         std::ostringstream oss;
-        oss << "SendMessageToNode " << sendTest << " test\r";
+        oss << "SendMessageToNode " << sendNodeId << " " << messageForNode << "\r";
         modem.Write((const unsigned char*)oss.str().c_str(), oss.str().length());
     }
     return 0;
