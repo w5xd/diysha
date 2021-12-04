@@ -459,12 +459,13 @@ QueueBytesFree 9
             {
                 oss << nodeId << " " << buf << " " << rssiVal << " HVAC " << hvacreport;
             } else if (state == HVACNODE1)
-            {
+            {  if (Ti != 0 || To != 0 || Ts != 0)
                 oss << nodeId << " " << buf << " " << rssiVal << " HVAC Ti=" << 32.0 + Ti * 9.0 / 5.0 <<
                     " To=" << 32.0 + To * 9.0 / 5.0 <<
                     " Ts=" << 32.0 + Ts * 9.0 / 5.0;
             }
-            std::cout << oss.str() << std::endl;
+	    if (!oss.str().empty())
+                std::cout << oss.str() << std::endl;
         }
     }
     if (foundEntryToDelete)
