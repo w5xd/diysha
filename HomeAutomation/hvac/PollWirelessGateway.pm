@@ -196,7 +196,7 @@ sub poll {
         my $furnace   = $entry->[0];
         my $furnaceIn = $entry->[2];
         if ( $furnace > 0 ) {
-            $self->{_furnaceOnFlags}{$nodeId} = [ $furnace, $now ];
+            $self->{_furnaceOnFlags}{$nodeId} = [ $furnace, $now, $furnaceIn];
             my $fn =
                 $self->{_vars}->{FURNACE_LOG_LOCATION}
               . "/HvacFurnace"
