@@ -1,5 +1,8 @@
 #!/bin/bash
 
+if [ -z "$FURNACE_LOGIN" ]; then
+    echo "Modtronix monitor disabled"
+else
 #must have defined $FURNACE_IP and $FURNACE_LOGIN and $FURNACE_LOG_LOCATION
 ./poll_events $FURNACE_LOG_LOCATION/poll_events.log $FURNACE_LOG_LOCATION/relay_events.log 2>$FURNACE_LOG_LOCATION/poll_events_err.txt &
 P2=$!
@@ -11,3 +14,5 @@ echo -e "#!/bin/bash\n\
         export FURNACE_LOGIN='$FURNACE_LOGIN'\n\
 	export FURNACE_LOG_LOCATION='$FURNACE_LOG_LOCATION'"\
        	> $FURNACE_LOG_LOCATION/stop_last_monitor.sh
+fi
+
