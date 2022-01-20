@@ -7,6 +7,13 @@ package hvac::PollWirelessGateway;
 
 use strict;
 
+my $FURNACE_Y2_MASK = 8;
+my $FURNACE_Y_MASK = 16;
+my $FURNACE_d_MASK = 1;
+my $FURNACE_G_MASK = 2;
+my $FURNACE_W_MASK = 4;
+my $FURNACE_O_MASK = 32;
+
 sub new {
     my $class = shift;
     my $self  = {
@@ -30,23 +37,36 @@ sub new {
 sub furnaceTextToInt {
     my $hvo     = substr( shift, 4 );
     my $furnace = 0;
-    if ( substr( $hvo, 1, 1 ) eq "d" ) {
-        $furnace += 1;
+
+    my $idx = index($hvo, "Y2");
+    if ($idx >= 0) {
+	    $furnace += $FURNACE_Y2_MASK;
+	    $hvo = substr($hvo, 0, $idx) . substr($hvo, $idx + 2);
     }
-    if ( substr( $hvo, 2, 1 ) eq "G" ) {
-        $furnace += 2;
+    $idx = index($hvo, "d");
+    if ($idx >= 0) {
+        $furnace += $FURNACE_d_MASK;
+	$hvo = substr($hvo, 0, $idx) . substr($hvo, $idx + 1);
     }
-    if ( substr( $hvo, 3, 1 ) eq "W" ) {
-        $furnace += 4;
+    $idx = index($hvo, "G");
+    if ($idx >= 0) {
+        $furnace += $FURNACE_G_MASK;
+	$hvo = substr($hvo, 0, $idx) . substr($hvo, $idx + 1);
     }
-    if ( substr( $hvo, 4, 2 ) eq "Y2" ) {
-        $furnace += 8;
+    $idx = index($hvo, "W");
+    if ($idx >= 0) {
+        $furnace += $FURNACE_W_MASK;
+	$hvo = substr($hvo, 0, $idx) . substr($hvo, $idx + 1);
     }
-    if ( substr( $hvo, 6, 1 ) eq "Y" ) {
-        $furnace += 16;
+    $idx = index($hvo, "Y");
+    if ($idx >= 0) {
+        $furnace += $FURNACE_Y_MASK;
+	$hvo = substr($hvo, 0, $idx) . substr($hvo, $idx + 1);
     }
-    if ( substr( $hvo, 7, 1 ) eq "O" ) {
-        $furnace += 32;
+    $idx = index($hvo, "O");
+    if ($idx >= 0) {
+        $furnace += $FURNACE_O_MASK;
+	$hvo = substr($hvo, 0, $idx) . substr($hvo, $idx + 1);
     }
     return $furnace;
 }
@@ -195,7 +215,8 @@ sub poll {
         if ( ( $now - $entry->[1] ) < ( 5 * 60 ) ) { next; }
         my $furnace   = $entry->[0];
         my $furnaceIn = $entry->[2];
-        if ( $furnace > 0 ) {
+	my $keepgoing = $furnace & ~($FURNACE_O_MASK | $FURNACE_d_MASK);
+        if ( $keepgoing > 0 ) {
             $self->{_furnaceOnFlags}{$nodeId} = [ $furnace, $now, $furnaceIn];
             my $fn =
                 $self->{_vars}->{FURNACE_LOG_LOCATION}
