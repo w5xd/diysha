@@ -53,7 +53,8 @@ print STDERR "My URL is: \"", $d->url, "\"\n";
 
 my $selector = IO::Select->new($d);
 
-while ( my @ready = $selector->can_read ) {
+for (;;) {
+    if (my @ready = $selector->can_read ) {
     foreach my $fh (@ready) {
         if ( $fh == $d ) {
             # Create a new socket
@@ -70,6 +71,7 @@ while ( my @ready = $selector->can_read ) {
             }
         }
     }
+}
 }
 
 print STDERR "main.pl exit\n";
