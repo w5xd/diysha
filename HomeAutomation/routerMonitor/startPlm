@@ -33,7 +33,7 @@ my ($fn, $DIR) = fileparse($0);  #base file specs on location of this script
 
 
 	chdir "$DIR/PlmServer";
-	system ("/usr/local/bin/perl -w -I. -I./apps main.pl $PlmServerPort $DIR/httpd/htdocs/insteon/logfile.txt" .
+	system ("./runPlm $PlmServerPort $DIR/httpd/htdocs/insteon/logfile.txt" .
 		" $ENV{FURNACE_LOG_LOCATION}/PlmSchedule.log" .
 		" >$ENV{FURNACE_LOG_LOCATION}/PlmServer.log 2>&1 &");
 
