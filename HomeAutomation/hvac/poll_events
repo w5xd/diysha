@@ -10,6 +10,11 @@ then
    echo "poll_events requires two file names" 1>&2
    exit -1
 fi
+if [ -z "$FURNACE_LOGIN" ];
+then
+	echo "poll_events disabled as FURNACE_LOGIN absent"
+	exit -1
+fi
 COUNTER=0
 while [ $COUNTER -lt 1 ]; do
 CGICONTENTS=$(curl --max-time 30 --silent $FURNACE_LOGIN http://$FURNACE_IP/furnevt.cgi)

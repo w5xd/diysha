@@ -1,0 +1,7 @@
+#!/bin/bash
+for (( ; ; ))
+do
+	date
+	/usr/local/bin/perl -w -I. -I./apps main.pl $1 $2 $3
+	echo "App exited: " $?
+done
