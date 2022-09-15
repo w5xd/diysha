@@ -131,7 +131,7 @@ sub poll {
                                 push @{$self->{_lastTemperatures}}, $nodeId;
                             }
                         }
-                        elsif ( $splitLine[5] =~ m/^HVo=/ ) {
+                        elsif ( (scalar @splitLine > 5) && $splitLine[5] =~ m/^HVo=/ ) {
                             $furnace   = furnaceTextToInt( $splitLine[5] );
                             $furnaceIn = furnaceTextToInt( $splitLine[4] );
                             my $now = time();
@@ -139,6 +139,10 @@ sub poll {
                               [ $furnace, $now, $furnaceIn ]
                               ;    #save value for repetition
                         }
+			elsif ( (scalar @splitLine > 4) && $splitLine[4] =~ m/^RG:/ )
+			{
+				$fnbase = "/Raingauge";
+			}
                         my $fn =
                             $self->{_vars}->{FURNACE_LOG_LOCATION}
                           . $fnbase
