@@ -131,7 +131,7 @@ sub poll {
                                 push @{$self->{_lastTemperatures}}, $nodeId;
                             }
                         }
-                        elsif ( $splitLine[5] =~ m/^HVo=/ ) {
+                        elsif ( (scalar @splitLine > 5) && $splitLine[5] =~ m/^HVo=/ ) {
                             $furnace   = furnaceTextToInt( $splitLine[5] );
                             $furnaceIn = furnaceTextToInt( $splitLine[4] );
                             my $now = time();

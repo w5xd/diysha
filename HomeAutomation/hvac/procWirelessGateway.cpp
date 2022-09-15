@@ -219,8 +219,9 @@ QueueBytesFree 9
         QUEUE, MSGID, AGE, REC, RSSI, NODEID,
         NODECOUNT1, NODECOUNT2, NODECOUNT3,
         NODEBATTERY1, NODEBATTERY2, NODEBATTERY3,
-        NODETEMPERATURE1, NODETEMPERATURE2, NODE_RH1, NODE_RH2, NODE_RH3, PARSE_SUCCESS,
-        HVACNODE1, HVACNODE2
+        NODETEMPERATURE1, NODETEMPERATURE2, NODE_RH1, NODE_RH2, NODE_RH3,
+        PARSE_SUCCESS,
+        HVACNODE1, HVACNODE2,
     };
 
     // for every line in the gateway response..
@@ -231,6 +232,11 @@ QueueBytesFree 9
         //Queue 33 5299 REC -59 3 C:44, B:263, T:+20.31
         // ...or...
         //Queue 44 3 REC -28 6 C:0, B:273, T:+26.18 R:58.27
+        //
+        //PacketRaingauge messages look like:
+        //Queue 45 3 REC -59 21 C:1, B:273, T:+26.18, RG:1, F:2100 
+        // RG:1 means 1mm of rain since last report. 
+        // C, B and T are like PacketThermometer
 
         LineParseState_t state(QUEUE);
         unsigned counter(0); // count characters in the current state
@@ -247,6 +253,7 @@ QueueBytesFree 9
         float humidityPercent(-1.f);
         std::string hvacreport;
         float Ti(0), To(0), Ts(0);
+        std::string rainGauge;
 
         unsigned lineIdx(0); // count characters in the line
         for (auto const& c : line)
@@ -260,7 +267,7 @@ QueueBytesFree 9
             static const char BText[] = "B:";
             static const char TText[] = "T:";
             static const char RhText[] = "R:";
-
+            static const char RainGaugeText[] = "RG:";
 
             bool error(false);// error flag for this character. aborts line processing
             switch (state)
@@ -290,7 +297,8 @@ QueueBytesFree 9
                 {
                     negRssi = true;
                     counter += 1;
-                } else if (parseForUnsigned(c, rssi, counter, error))
+                }
+                else if (parseForUnsigned(c, rssi, counter, error))
                     state = NODEID;
                 break;
 
@@ -319,7 +327,8 @@ QueueBytesFree 9
                         }
                     }
                     state = HVACNODE1;
-                } else if (error && (error = false, parseForString(c, HviText, sizeof(HviText), counter, error)))
+                }
+                else if (error && (error = false, parseForString(c, HviText, sizeof(HviText), counter, error)))
                     state = HVACNODE2;
                 if (error)
                     hvacreport.clear();
@@ -340,7 +349,8 @@ QueueBytesFree 9
                         error = false;
                         state = NODECOUNT3;
                         counter = 0;
-                    } else
+                    }
+                    else
                         state = NODEBATTERY1;
                 }
                 break;
@@ -366,7 +376,8 @@ QueueBytesFree 9
                         error = false;
                         state = NODEBATTERY3;
                         counter = 0;
-                    } else
+                    }
+                    else
                         state = NODETEMPERATURE1;
                 }
                 break;
@@ -400,6 +411,18 @@ QueueBytesFree 9
                     state = NODE_RH2;
                     counter = 0;
                 }
+                else if (c == ',')
+                {
+                    std::string temp = line.substr(lineIdx + 1);
+                    while (!temp.empty() && isspace(*temp.begin()))
+                        temp.erase(temp.begin());
+                    if (temp.find(RainGaugeText) != temp.npos)
+                    {
+                        rainGauge = temp;
+                        state = PARSE_SUCCESS;
+                    }
+                    counter = 0;
+                }
                 break;
 
             case NODE_RH2:
@@ -417,7 +440,9 @@ QueueBytesFree 9
                 }
             }
             break;
+
             }
+
             lineIdx += 1;
 
             if (error)
@@ -434,14 +459,14 @@ QueueBytesFree 9
             time_t thisEvent = now - age; // account for time inside gateway
             local = localtime(&thisEvent);
             char buf[64];
-                // old unix-style time string for first two columns in log
+            // old unix-style time string for first two columns in log
             sprintf(buf, "%04d/%02d/%02d %02d:%02d:%02d",
-                    local->tm_year + 1900,
-                    local->tm_mon + 1,
-                    local->tm_mday,
-                    local->tm_hour,
-                    local->tm_min,
-                    local->tm_sec);
+                local->tm_year + 1900,
+                local->tm_mon + 1,
+                local->tm_mday,
+                local->tm_hour,
+                local->tm_min,
+                local->tm_sec);
 
             short rssiVal = negRssi ? -(short)rssi : rssi;
 
@@ -455,16 +480,21 @@ QueueBytesFree 9
                     nodeCount;
                 if (humidityPercent > 0.f)
                     oss << " " << humidityPercent;
-            } else if (state == HVACNODE2)
+                if (!rainGauge.empty())
+                    oss << " " << rainGauge;
+            }
+            else if (state == HVACNODE2)
             {
                 oss << nodeId << " " << buf << " " << rssiVal << " HVAC " << hvacreport;
-            } else if (state == HVACNODE1)
-            {  if (Ti != 0 || To != 0 || Ts != 0)
-                oss << nodeId << " " << buf << " " << rssiVal << " HVAC Ti=" << 32.0 + Ti * 9.0 / 5.0 <<
+            }
+            else if (state == HVACNODE1)
+            {
+                if (Ti != 0 || To != 0 || Ts != 0)
+                    oss << nodeId << " " << buf << " " << rssiVal << " HVAC Ti=" << 32.0 + Ti * 9.0 / 5.0 <<
                     " To=" << 32.0 + To * 9.0 / 5.0 <<
                     " Ts=" << 32.0 + Ts * 9.0 / 5.0;
             }
-	    if (!oss.str().empty())
+            if (!oss.str().empty())
                 std::cout << oss.str() << std::endl;
         }
     }
