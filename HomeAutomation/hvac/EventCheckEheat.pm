@@ -86,12 +86,12 @@ sub temperatureEvent {
           . $self->{_vars}->{FURNACE_GATEWAY_DEVICE}
           . " SEND "
           . $self->{_vars}->{FURNACE_NODEID}
-          . " HVAC TYPE=";
+          . " ";
         if ( $min < $minTemp ) {
-            $cmd = $cmdBase . "1 MODE=0";    # set to NoHP
+            $cmd = $cmdBase . $self->{_vars}->{FURNACE_BELOW_MIN_COMMAND};    # set to NoHP
         }
         elsif ( $min > $minTemp ) {
-            $cmd = $cmdBase . "0 MODE=0";    # set to PasT
+            $cmd = $cmdBase . $self->{_vars}->{FURNACE_ABOVE_MIN_COMMAND};    # set to PasT
         }
     }
     else {                                   #use curl to talk to modtronix
@@ -120,7 +120,7 @@ sub temperatureEvent {
         {
             system($cmd);
 
-            #print STDERR "cmd = " . $cmd . "\n";
+	    #print STDERR "cmd = " . $cmd . "\n";
             $self->{_lastCmd} = [ $now, $cmd ];
         }
         else {
