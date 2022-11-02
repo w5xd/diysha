@@ -111,20 +111,25 @@ sub poll {
                         my $furnace   = 0;
                         my $furnaceIn = 0;
                         my $fnbase    = "/HvacFurnace";
-                        if ( $splitLine[4] =~ m/^Ti=/ ) {
+                        if ( $splitLine[4] =~ m/^Ti:/ ) {
                             $fnbase       = "/HvacTemperature";
                             $line         = "";    #strip labels from numbers
-                            $splitLine[4] = substr( $splitLine[4], 3 );
-                            $splitLine[5] = substr( $splitLine[5], 3 );
-                            $splitLine[6] = substr( $splitLine[6], 3 );
-                            foreach (@splitLine) { $line .= $_ . " "; }
-                            if ( exists( $eheatList{$nodeId} ) ) {
+                            $furnace = "";
+                            $furnaceIn = "";
+                            my $outside;
+                            foreach (@splitLine) { 
+                                       my $v = $_;
+                                       if ($v =~ m/^To:/) { $outside = substr($v, 3); }
+                                       if ($v =~ m/^T.:/) { $v = substr($v, 3); }
+                                       $line .= $v . " ";
+                            }
+                            if ( defined($outside) && exists( $eheatList{$nodeId} ) ) {
 				my $filterHoneywell = $self->{_filterHoneywell};
 				if (!defined($filterHoneywell)) {
-					$filterHoneywell = $splitLine[6];
+					$filterHoneywell = $outside;
 				}
 				$filterHoneywell *= 9;
-				$filterHoneywell += $splitLine[6];
+				$filterHoneywell += $outside;
 				$filterHoneywell /= 10;
 				$self->{_filterHoneywell} = $filterHoneywell;
                                 push @{$self->{_lastTemperatures}}, $filterHoneywell;
