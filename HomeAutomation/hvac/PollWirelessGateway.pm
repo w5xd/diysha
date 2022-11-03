@@ -144,6 +144,10 @@ sub poll {
                               [ $furnace, $now, $furnaceIn ]
                               ;    #save value for repetition
                         }
+			elsif ( (scalar @splitLine > 4) && $splitLine[4] =~ m/^RG:/ )
+			{
+				$fnbase = "/Raingauge";
+			}
                         my $fn =
                             $self->{_vars}->{FURNACE_LOG_LOCATION}
                           . $fnbase
