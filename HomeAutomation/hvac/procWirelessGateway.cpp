@@ -323,7 +323,13 @@ QueueBytesFree 9
                             To = atof(q + 3);
                             q = strstr(line.c_str(), "Ts:");
                             if (q)
-                                Ts = atof(q + 3);
+			    {
+				q += 3;
+                                Ts = atof(q);
+				while (*q && !isspace(*q))
+					q += 1;
+				hvacreport = q;
+			    }
                         }
                     }
                     state = HVACNODE1;
@@ -490,9 +496,9 @@ QueueBytesFree 9
             else if (state == HVACNODE1)
             {
                 if (Ti != 0 || To != 0 || Ts != 0)
-                    oss << nodeId << " " << buf << " " << rssiVal << " HVAC Ti=" << 32.0 + Ti * 9.0 / 5.0 <<
-                    " To=" << 32.0 + To * 9.0 / 5.0 <<
-                    " Ts=" << 32.0 + Ts * 9.0 / 5.0;
+                    oss << nodeId << " " << buf << " " << rssiVal << " HVAC Ti:" << 32.0 + Ti * 9.0 / 5.0 <<
+                    " To:" << 32.0 + To * 9.0 / 5.0 <<
+                    " Ts:" << 32.0 + Ts * 9.0 / 5.0 << " " << hvacreport;
             }
             if (!oss.str().empty())
                 std::cout << oss.str() << std::endl;
