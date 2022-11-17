@@ -3,7 +3,7 @@
 # HouseConfiguration.ini declares them in [SENSOR_MONITOR_STARTUP]
 
 package hvac::EventCheckModtronix;
-
+use base ("hvac::EventCheckEheat");
 use strict;
 
 sub getCmdMin {
