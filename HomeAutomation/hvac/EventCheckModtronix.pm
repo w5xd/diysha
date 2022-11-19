@@ -6,7 +6,7 @@ package hvac::EventCheckModtronix;
 use base ("hvac::EventCheckEheat");
 use strict;
 
-sub getCmdMin {
+sub getCmd {
     my $self         = shift;
     my $temperatureF = shift;
     my $minTemp      = shift;
