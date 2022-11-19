@@ -76,37 +76,8 @@ sub temperatureEvent {
         }
     }
 
-    my $cmd;
-    my $FURNACE_LOGIN = $self->{_vars}->{FURNACE_LOGIN};
-    if ( !defined($FURNACE_LOGIN) || $FURNACE_LOGIN eq "" )
-    {    #use WirelessGateway to talk to Packet Thermostat
-        my $cmdBase =
-            $ENV{HTTPD_LOCAL_ROOT}
-          . "/../hvac/procWirelessGateway "
-          . $self->{_vars}->{FURNACE_GATEWAY_DEVICE}
-          . " SEND "
-          . $self->{_vars}->{FURNACE_NODEID}
-          . " ";
-        if ( $min < $minTemp ) {
-            $cmd = $cmdBase . $self->{_vars}->{FURNACE_BELOW_MIN_COMMAND};    # set to NoHP
-        }
-        elsif ( $min > $minTemp ) {
-            $cmd = $cmdBase . $self->{_vars}->{FURNACE_ABOVE_MIN_COMMAND};    # set to PasT
-        }
-    }
-    else {                                   #use curl to talk to modtronix
-        my $FURNACE_IP = $self->{_vars}->{FURNACE_IP};
-        if ( $min < $minTemp ) {
-            $cmd =
-"curl --max-time 30 --silent $FURNACE_LOGIN http://$FURNACE_IP/nothing?xr5=1 > /dev/null 2>&1";
-        }
-
-        #note that $min == $minTemp is NOT processed
-        elsif ( $min > $minTemp ) {
-            $cmd =
-"curl --max-time 30 --silent $FURNACE_LOGIN http://$FURNACE_IP/nothing?xr5=0 > /dev/null 2>&1";
-        }
-    }
+    my $cmd = $self->getCmd($min, $minTemp);
+    
     if ( defined $cmd ) {
         my $now     = time();
         my $lastCmd = $self->{_lastCmd};
