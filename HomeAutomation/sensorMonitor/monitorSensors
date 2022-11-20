@@ -9,7 +9,8 @@ use strict;
 use Carp qw( croak );
 use AppConfig;
 
-require HTTP::Daemon require IO::Select;
+require HTTP::Daemon;
+require IO::Select;
 use HTTP::Status;
 
 # packages we'll use to call their polling method
@@ -91,13 +92,14 @@ while ( ( $key, $value ) = each(%eventvars) ) {
         push( @eventprocs, $process );
         if ( $process->can("process_request") ) {
             $value =~ s/::/\//g;
+	    $value = "/" . $value;
             $pagesLoaded{$value} = $process;
             print STDERR "page loaded: " . $value . "\n";
         }
     }
 }
 
-$selector = IO::Select->new();
+my $selector = IO::Select->new();
 my $daemon;
 if ( defined $portNumber ) {
     $daemon = HTTP::Daemon->new(
@@ -134,7 +136,8 @@ while (1) {
         $i += 1;
     }
     # check listening socket for incoming web requests
-    while ( my @ready = $selector->can_read(1), scalar @ready > 0 ) {
+    while ( my @ready = $selector->can_read(1)) {
+	if (scalar @ready <= 0 ) { last; }
         foreach my $fh (@ready) {
             if ( $fh == $daemon ) {
                 # Create a new socket
@@ -146,7 +149,7 @@ while (1) {
                 my $result = 0;
                 if ( my $r = $fh->get_request ) {
                     my $path   = $r->uri->path;
-                    my $loaded = $pagesLoaded->{$path};
+                    my $loaded = $pagesLoaded{$path};
                     print STDERR "monitorSensors process request " . $path
                       . "\n";
                     if ( defined $loaded ) {
