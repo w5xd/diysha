@@ -5,6 +5,7 @@
 package hvac::PacketThermostat;
 use base ("hvac::EventCheckEheat");
 use strict;
+use feature qw(switch);
 
 sub getCmdDoNotCall {
     my $self         = shift;
@@ -87,6 +88,7 @@ sub process_request {
     }
 
     # Split information into name/value pairs
+    if (!defined($buffer)) { $buffer = ""; }
     @pairs = split( /&/, $buffer );
     foreach $pair (@pairs) {
         ( $name, $value ) = split( /=/, $pair );
@@ -94,6 +96,34 @@ sub process_request {
         $value =~ s/%(..)/pack("C", hex($1))/eg;
         $FORM{$name} = $value;
     }
+
+#Do a sync command if it asks us too
+if ( defined( $FORM{sync} ) ) {    #user wants the clock synchronized
+    (
+        my $sec,  my $min,  my $hour, my $mday, my $mon,
+        my $year, my $wday, my $yday, my $isdst
+    ) = localtime( time + 30 );    # round up to next minute
+    $year += 1900;
+    $mon += 1;
+    my $setting = "T=". $year . " " . $mon . " " . $mday . " " . $hour . " " . $min . " 0 " . $wday;
+    print STDERR "command=\"" . $setting . "\"\n";
+}
+elsif ( defined( $FORM{submit} ) )
+{    #user wants to send the thermostat a command
+    if (   defined( $FORM{thermostat_mode} )
+        && defined( $FORM{hvac_was} )
+        && defined( $FORM{temperature_setting} )
+        && defined( $FORM{fan_mode} ) )
+    {
+        my $val = $FORM{thermostat_mode};
+	if ($val >= 0 && $val <= 4) {$self->{_thermostat_mode} = $val;}
+	$val = $FORM{temperature_setting};
+	if ($val >= 70 && $val <= 400 ) { $self->{_targetTempCx10} = $val; }
+        $val = $FORM{fan_mode};
+	if ($val >= 0 && $val <= 1) { $self->{_fan_mode} = $val; }
+    }
+}
+
 
     # required http header cuz we're CGI
     $msg = <<FirstSectionDone;
@@ -112,9 +142,33 @@ FirstSectionDone
         }
     }
 
+    my $targetTemp = $self->{_targetTempCx10};
+    my $thermostat_mode = $self->{_thermostat_mode};
+    my $s = "";
+    if (!defined($thermostat_mode)) { $thermostat_mode = -1; 
+    	$s = "<option value='-1'></option>";}
+    my $s0 = ""; my $s1 = ""; my $s2 = ""; my $s3 = ""; my $s4 = "";
+    given ($thermostat_mode) {
+	    when(0) { $s0 = "selected";}
+	    when(1) { $s1 = "selected";}
+	    when(2) { $s2 = "selected";}
+	    when(3) { $s3 = "selected";}
+	    when(4) { $s4 = "selected";}
+    }
+    my $fanMode = $self->{_fan_mode};
+    my $fm = "";
+    if (!defined($fanMode)) { $fanMode = -1; 
+	    $fm = "<option value='-1'></option>";
+    }
+    my $fm0 = ""; my $fm1 = "";
+    given ($fanMode) {
+	   when(0) { $fm0 = "selected"; }
+	   when(1) { $fm1 = "selected"; }
+    }
+
     $msg .= <<Form_print_done1;
 <form action="" method="POST">
-<input type="hidden" name="hvac_was" value="68" />
+<input type="hidden" name="hvac_was" value="$thermostat_mode" />
 <table border="1">
 <tr><th>Mode</th><th>Fan</th><th>Target</th>
 <th></th>
@@ -122,30 +176,37 @@ FirstSectionDone
 <tr>
 <td align='center'>
 <select name="thermostat_mode" size=1>
-<option >Pass Through</option>
-<option >No Heat pump</option>
-<option >Heat</option>
-<option >eHeat</option>
-<option >Cool</option>
+$s
+<option value="0" $s0 >Pass Through</option>
+<option value="1" $s1 >No Heat pump</option>
+<option value="2" $s2 >Heat</option>
+<option value="3" $s3 >eHeat</option>
+<option value="4" $s4 >Cool</option>
 </select>
 </td>
 <td align='center'>
 <select name="fan_mode" size=1>
-<option >Auto</option>
-<option >Continuous</option>
+$fm
+<option value="0" $fm0>Auto</option>
+<option value="1" $fm1>Continuous</option>
 </select>
 </td>
 <td align='center'>
 <select name="temperature_setting" size=1>
 Form_print_done1
 
+    if (!defined($targetTemp)) { 
+	    $msg .= "<option></option>\n";
+    }
     for (
         my $temperature = $MIN_TEMP_SETTING ;
         $temperature <= $MAX_TEMP_SETTING ;
         $temperature++
       )
     {
-        $msg .= "<option";
+	my $thisTempCx10 = int(($temperature - 32) * 50 / 9);
+        $msg .= "<option value='" . $thisTempCx10 . "'";
+	if (defined($targetTemp) && ($thisTempCx10 == $targetTemp)) { $msg .= " selected"; }
         $msg .= ">$temperature</option>\n";
     }
 
@@ -171,11 +232,11 @@ Form_print_done2
 <form action="" 
  onsubmit="return confirm('Will set the thermostat clock to now. OK?');" 
  method="POST">
-<p align="center">
+<p>
 <input type="submit" name="sync" value="Synchronize thermostat clock" />
 </p>
 </form>
-<center><font size=+1><b>Thermostat Control</b></font></center>
+<font size=+1><b>Packet Thermostat</b></font>
 Form_print_done3
 
     $msg .= <<Form_print_done7;
