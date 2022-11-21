@@ -60,7 +60,9 @@ sub process_request {
     my $msg;
 
     #parameter
-    my $DEBUG = 1;
+    my $DEBUG            = 1;
+    my $MIN_TEMP_SETTING = 45;
+    my $MAX_TEMP_SETTING = 95;
 
     #We take arguments. Either as HTTP POST or GET. Find them...
     my $buffer;
@@ -109,6 +111,70 @@ FirstSectionDone
             $msg .= "$key => $value<br/>\n";
         }
     }
+
+    $msg .= <<Form_print_done1;
+<form action="" method="POST">
+<input type="hidden" name="hvac_was" value="$tmode" />
+<table border="1">
+<tr><th>Mode</th><th>Fan</th><th>Target</th>
+<th></th>
+</tr>
+<tr>
+<td align='center'>
+<select name="thermostat_mode" size=1>
+<option >Off</option>
+<option >Heat</option>
+<option >Cool</option>
+</select>
+</td>
+<td align='center'>
+<select name="fan_mode" size=1>
+<option >Auto</option>
+<option >Continuous</option>
+</select>
+</td>
+<td align='center'>
+<select name="temperature_setting" size=1>
+Form_print_done1
+
+    for (
+        my $temperature = $MIN_TEMP_SETTING ;
+        $temperature <= $MAX_TEMP_SETTING ;
+        $temperature++
+      )
+    {
+        $msg .= "<option";
+        $msg .= ">$temperature</option>\n";
+    }
+
+    $msg .= <<Form_print_done2;
+</select>&deg;F<br/>
+Form_print_done2
+
+    $msg .= <<Form_print_done3;
+</td>
+<td align="center">
+<input type="reset" name="Reset" value="Undo"/><br/>
+</td>
+</tr>
+<tr>
+<td colspan='4' align="center">
+<input type="submit" name="submit" 
+   value="Set thermostat to these settings now!"/>
+</td>
+</tr>
+</table>
+</form>
+
+<form action="" 
+ onsubmit="return confirm('Will set the thermostat clock to now. OK?');" 
+ method="POST">
+<p align="center">
+<input type="submit" name="sync" value="Synchronize thermostat clock" />
+</p>
+</form>
+<center><font size=+1><b>Thermostat Control</b></font></center>
+Form_print_done3
 
     $msg .= <<Form_print_done7;
 </body>
