@@ -114,7 +114,7 @@ FirstSectionDone
 
     $msg .= <<Form_print_done1;
 <form action="" method="POST">
-<input type="hidden" name="hvac_was" value="$tmode" />
+<input type="hidden" name="hvac_was" value="68" />
 <table border="1">
 <tr><th>Mode</th><th>Fan</th><th>Target</th>
 <th></th>
@@ -122,8 +122,10 @@ FirstSectionDone
 <tr>
 <td align='center'>
 <select name="thermostat_mode" size=1>
-<option >Off</option>
+<option >Pass Through</option>
+<option >No Heat pump</option>
 <option >Heat</option>
+<option >eHeat</option>
 <option >Cool</option>
 </select>
 </td>
