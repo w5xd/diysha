@@ -15,12 +15,14 @@ sub getCmdDoNotCall {
     my $cmd;
 
     #use WirelessGateway to talk to Packet Thermostat
+    my $device = $self->{_vars}->{FURNACE_GATEWAY_DEVICE};
+    my $nodeId =  $self->{_vars}->{FURNACE_NODEID};
+
+    if (defined($device) && defined ($nodeId)) {
     my $cmdBase =
-        $ENV{HTTPD_LOCAL_ROOT}
-      . "/../hvac/procWirelessGateway "
-      . $self->{_vars}->{FURNACE_GATEWAY_DEVICE}
-      . " SEND "
-      . $self->{_vars}->{FURNACE_NODEID} . " ";
+        $ENV{HTTPD_LOCAL_ROOT} . "/../hvac/procWirelessGateway "
+      . $device      . " SEND "
+      . $nodeId . " ";
     if ( $temperatureF < $Temp ) {
         $cmd =
           $cmdBase . $self->{_vars}->{FURNACE_BELOW__COMMAND};    # set to NoHP
@@ -28,6 +30,7 @@ sub getCmdDoNotCall {
     elsif ( $temperatureF > $Temp ) {
         $cmd =
           $cmdBase . $self->{_vars}->{FURNACE_ABOVE__COMMAND};    # set to PasT
+    }
     }
 
     $cmd;
@@ -97,7 +100,7 @@ sub process_request {
         $FORM{$name} = $value;
     }
 
-#Do a sync command if it asks us too
+#Do a time sync command if POST asks us too
 if ( defined( $FORM{sync} ) ) {    #user wants the clock synchronized
     (
         my $sec,  my $min,  my $hour, my $mday, my $mon,
