@@ -112,22 +112,22 @@ FirstSectionDone
 
     $msg .= <<Form_print_done1;
 $cmd
-<form action="" method="POST">
+<form action="" method="post">
 <table border="1">
 <tr><th>Node</th><th colspan='3' align='center'>Text</th></tr>
 <tr>
 <td align='center'>
-<input type='number' id='nodenumber' name='nodenumber' min='1' max='255' $nodeValue></input>
+<input type='number' id='nodenumber' name='nodenumber' min='1' max='255' $nodeValue />
 </td>
 <td colspan='3' align='center'>
-<input type='text' size='60' id='texttosend' name='texttosend'></input>
+<input type='text' size='60' id='texttosend' name='texttosend'/>
 </td>
 </tr>
 <tr>
 <td></td>
-<td><input type='submit' name='sendmessage' id='sendmessage' value='Send'></input></td>
-<td><input type='submit' name='queuemessage' id='queuemessage' value='Queue'></input></td>
-<td><input type='submit' name='getmessages' id='getmessages' value='List'></input></td>
+<td><input type='submit' name='sendmessage' id='sendmessage' value='Send'/></td>
+<td><input type='submit' name='queuemessage' id='queuemessage' value='Queue'/></td>
+<td><input type='submit' name='getmessages' id='getmessages' value='List'/></td>
 </tr>
 </table>
 </form>
