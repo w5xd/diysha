@@ -8,11 +8,11 @@ package hvac::PollWirelessGateway;
 use strict;
 
 my $FURNACE_Y2_MASK = 8;
-my $FURNACE_Y_MASK = 16;
-my $FURNACE_d_MASK = 1;
-my $FURNACE_G_MASK = 2;
-my $FURNACE_W_MASK = 4;
-my $FURNACE_O_MASK = 32;
+my $FURNACE_Y_MASK  = 16;
+my $FURNACE_d_MASK  = 1;
+my $FURNACE_G_MASK  = 2;
+my $FURNACE_W_MASK  = 4;
+my $FURNACE_O_MASK  = 32;
 
 sub new {
     my $class = shift;
@@ -20,7 +20,7 @@ sub new {
         _vars             => shift,
         _commPort         => shift,
         _timeOfPoll       => time(),    # first poll
-	_lastTemperatures => [],
+        _lastTemperatures => [],
         _furnaceOnFlags   => {}
     };
     my %nodeList;
@@ -28,45 +28,50 @@ sub new {
     $self->{_nodeList} =
       \%nodeList;    #remainder of arguments are nodes to check for eheat
     my $sendTest = shift;
-    if ( !defined($sendTest) ) { $sendTest = 254; } #if aren't any eheat nodes
+    if ( !defined($sendTest) ) { $sendTest = 254; }   #if aren't any eheat nodes
     $self->{_sendTest} = $sendTest;
     bless $self, $class;
     return $self;
+}
+
+sub need_hvac {
+    my $self = shift;
+    $self->{_need_hvac} = shift;
 }
 
 sub furnaceTextToInt {
     my $hvo     = substr( shift, 4 );
     my $furnace = 0;
 
-    my $idx = index($hvo, "Y2");
-    if ($idx >= 0) {
-	    $furnace += $FURNACE_Y2_MASK;
-	    $hvo = substr($hvo, 0, $idx) . substr($hvo, $idx + 2);
+    my $idx = index( $hvo, "Y2" );
+    if ( $idx >= 0 ) {
+        $furnace += $FURNACE_Y2_MASK;
+        $hvo = substr( $hvo, 0, $idx ) . substr( $hvo, $idx + 2 );
     }
-    $idx = index($hvo, "d");
-    if ($idx >= 0) {
+    $idx = index( $hvo, "d" );
+    if ( $idx >= 0 ) {
         $furnace += $FURNACE_d_MASK;
-	$hvo = substr($hvo, 0, $idx) . substr($hvo, $idx + 1);
+        $hvo = substr( $hvo, 0, $idx ) . substr( $hvo, $idx + 1 );
     }
-    $idx = index($hvo, "G");
-    if ($idx >= 0) {
+    $idx = index( $hvo, "G" );
+    if ( $idx >= 0 ) {
         $furnace += $FURNACE_G_MASK;
-	$hvo = substr($hvo, 0, $idx) . substr($hvo, $idx + 1);
+        $hvo = substr( $hvo, 0, $idx ) . substr( $hvo, $idx + 1 );
     }
-    $idx = index($hvo, "W");
-    if ($idx >= 0) {
+    $idx = index( $hvo, "W" );
+    if ( $idx >= 0 ) {
         $furnace += $FURNACE_W_MASK;
-	$hvo = substr($hvo, 0, $idx) . substr($hvo, $idx + 1);
+        $hvo = substr( $hvo, 0, $idx ) . substr( $hvo, $idx + 1 );
     }
-    $idx = index($hvo, "Y");
-    if ($idx >= 0) {
+    $idx = index( $hvo, "Y" );
+    if ( $idx >= 0 ) {
         $furnace += $FURNACE_Y_MASK;
-	$hvo = substr($hvo, 0, $idx) . substr($hvo, $idx + 1);
+        $hvo = substr( $hvo, 0, $idx ) . substr( $hvo, $idx + 1 );
     }
-    $idx = index($hvo, "O");
-    if ($idx >= 0) {
+    $idx = index( $hvo, "O" );
+    if ( $idx >= 0 ) {
         $furnace += $FURNACE_O_MASK;
-	$hvo = substr($hvo, 0, $idx) . substr($hvo, $idx + 1);
+        $hvo = substr( $hvo, 0, $idx ) . substr( $hvo, $idx + 1 );
     }
     return $furnace;
 }
@@ -100,43 +105,53 @@ sub poll {
         }
         else {
             my @splitLine = split( ' ', $line );
-
+            my $lineout   = $line;
             if ( scalar @splitLine > 0 ) {
                 my $nodeId    = shift @splitLine;
                 my %eheatList = %{ $self->{_nodeList} };
                 if ( scalar @splitLine > 4 ) {
-                    $line = "";
-                    foreach (@splitLine) { $line .= $_ . ' '; }
+                    $lineout = "";
+                    foreach (@splitLine) { $lineout .= $_ . ' '; }
                     if ( $splitLine[3] eq "HVAC" ) {
                         my $furnace   = 0;
                         my $furnaceIn = 0;
                         my $fnbase    = "/HvacFurnace";
+                        foreach my $proc ( @{$self->{_need_hvac}} ) {
+                            $proc->next_hvac_line($line);
+                        }
                         if ( $splitLine[4] =~ m/^Ti:/ ) {
-                            $fnbase       = "/HvacTemperature";
-                            $line         = "";    #strip labels from numbers
-                            $furnace = "";
+                            $fnbase = "/HvacTemperature";
+                            $lineout   = "";    #strip labels from numbers
+                            $furnace   = "";
                             $furnaceIn = "";
                             my $outside;
-                            foreach (@splitLine) { 
-                                       my $v = $_;
-                                       if ($v =~ m/^To:/) { $outside = substr($v, 3); }
-                                       if ($v =~ m/^T.:/) { $v = substr($v, 3); }
-                                       $line .= $v . " ";
+                            foreach (@splitLine) {
+                                my $v = $_;
+                                if ( $v =~ m/^To:/ ) {
+                                    $outside = substr( $v, 3 );
+                                }
+                                if ( $v =~ m/^T.:/ ) { $v = substr( $v, 3 ); }
+                                $lineout .= $v . " ";
                             }
-                            if ( defined($outside) && exists( $eheatList{$nodeId} ) ) {
-				my $filterHoneywell = $self->{_filterHoneywell};
-				if (!defined($filterHoneywell)) {
-					$filterHoneywell = $outside;
-				}
-				$filterHoneywell *= 9;
-				$filterHoneywell += $outside;
-				$filterHoneywell /= 10;
-				$self->{_filterHoneywell} = $filterHoneywell;
-                                push @{$self->{_lastTemperatures}}, $filterHoneywell;
-                                push @{$self->{_lastTemperatures}}, $nodeId;
+                            if ( defined($outside)
+                                && exists( $eheatList{$nodeId} ) )
+                            {
+                                my $filterHoneywell = $self->{_filterHoneywell};
+                                if ( !defined($filterHoneywell) ) {
+                                    $filterHoneywell = $outside;
+                                }
+                                $filterHoneywell *= 9;
+                                $filterHoneywell += $outside;
+                                $filterHoneywell /= 10;
+                                $self->{_filterHoneywell} = $filterHoneywell;
+                                push @{ $self->{_lastTemperatures} },
+                                  $filterHoneywell;
+                                push @{ $self->{_lastTemperatures} }, $nodeId;
                             }
                         }
-                        elsif ( (scalar @splitLine > 5) && $splitLine[5] =~ m/^HVo=/ ) {
+                        elsif ( ( scalar @splitLine > 5 )
+                            && $splitLine[5] =~ m/^HVo=/ )
+                        {
                             $furnace   = furnaceTextToInt( $splitLine[5] );
                             $furnaceIn = furnaceTextToInt( $splitLine[4] );
                             my $now = time();
@@ -149,7 +164,7 @@ sub poll {
                           . $fnbase
                           . $nodeId . ".log";
                         open( my $fh, ">>", $fn );
-                        print $fh $line . " "
+                        print $fh $lineout . " "
                           . $furnace . " "
                           . $furnaceIn . "\n";
                         close $fh;
@@ -161,15 +176,15 @@ sub poll {
 
                     #did INI file say this is an outside temperature?
                     if ( exists( $eheatList{$nodeId} ) ) {
-                        push @{$self->{_lastTemperatures}}, $splitLine[2];
-                        push @{$self->{_lastTemperatures}}, $nodeId;
+                        push @{ $self->{_lastTemperatures} }, $splitLine[2];
+                        push @{ $self->{_lastTemperatures} }, $nodeId;
                     }
 
                     #append processed result to temperature file
                     my $fn = $self->{_vars}->{FURNACE_LOG_LOCATION}
                       . "/wirelessThermometer$nodeId.log";
                     open( my $fh, ">>", $fn );
-                    print $fh $line . "\n";
+                    print $fh $lineout . "\n";
                     close $fh;
                     $self->{_timeOfPoll} = time();
                 }
@@ -220,9 +235,9 @@ sub poll {
         if ( ( $now - $entry->[1] ) < ( 5 * 60 ) ) { next; }
         my $furnace   = $entry->[0];
         my $furnaceIn = $entry->[2];
-	my $keepgoing = $furnace & ~($FURNACE_O_MASK | $FURNACE_d_MASK);
+        my $keepgoing = $furnace & ~( $FURNACE_O_MASK | $FURNACE_d_MASK );
         if ( $keepgoing > 0 ) {
-            $self->{_furnaceOnFlags}{$nodeId} = [ $furnace, $now, $furnaceIn];
+            $self->{_furnaceOnFlags}{$nodeId} = [ $furnace, $now, $furnaceIn ];
             my $fn =
                 $self->{_vars}->{FURNACE_LOG_LOCATION}
               . "/HvacFurnace"
@@ -252,7 +267,7 @@ sub notifyTemperature {
     $self->{_lastTemperatures} = [];
     return 0 if ( ( scalar @{$lastTemperatures} ) == 0 );
     my $ret;
-    while ( scalar(@{$lastTemperatures}) != 0 ) {
+    while ( scalar( @{$lastTemperatures} ) != 0 ) {
         my $t    = shift @{$lastTemperatures};
         my $node = shift @{$lastTemperatures};
         $ret = $who->temperatureEvent( $t, "WIRELESSGATEWAY" . $node );
