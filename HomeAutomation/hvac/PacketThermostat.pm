@@ -16,6 +16,8 @@ our @MapGuiMode = (
     [ "Cool",         3, 0 ],    #4
 );
 
+our $DEBUG = 0;
+
 sub getCmd {
     my $self         = shift;
     my $temperatureF = shift;
@@ -52,7 +54,8 @@ sub getCmd {
                 $self->{_thermostat_mode} = 2;
             }
         }
-        if ( defined($cmd) && defined( $self->{_read_from_tstat} ) ) {
+        if ( defined($cmd) ) {
+	    print STDERR "getCmd changed mode to " . $self->{_thermostat_mode} . " from " . $tstatMode . "\n" if $DEBUG;
             delete( $self->{_read_from_tstat} );
         }
     }
@@ -86,6 +89,7 @@ sub next_hvac_line {
                 foreach (@MapGuiMode) {
                     if ( $t_type == @{$_}[1] && $t_mode == @{$_}[2] ) {
                         $self->{_thermostat_mode} = $i;
+			print STDERR "next_hvac_line set thermostat_mode=" . $i . "\n" if $DEBUG;
                         $self->{_fan_mode} =
                           $f_mode eq '1'
                           ? 1
@@ -107,7 +111,6 @@ sub process_request {
     my $msg;
 
     #parameter
-    my $DEBUG            = 0;
     my $MIN_TEMP_SETTING = 45;
     my $MAX_TEMP_SETTING = 95;
 
@@ -180,7 +183,6 @@ sub process_request {
     elsif ( defined( $FORM{submit} ) )
     {    #user wants to send the thermostat a command
         if (   defined( $FORM{thermostat_mode} )
-            && defined( $FORM{hvac_was} )
             && defined( $FORM{temperature_setting} )
             && defined( $FORM{fan_mode} ) )
         {
@@ -189,6 +191,7 @@ sub process_request {
                 my $m = $self->{_thermostat_mode};
                 if ( !defined($m) || $m != $tmode ) {
                     $self->{_thermostat_mode} = $tmode;
+		    print STDERR "proc_event set tmode=" . $tmode . "\n" if $DEBUG;
                     my $cmd =
                         $cmdBase
                       . "HVAC TYPE="
@@ -300,7 +303,6 @@ FirstSectionDone
 
     $msg .= <<Form_print_done1;
 <form action="" method="POST">
-<input type="hidden" name="hvac_was" value="$thermostat_mode" />
 <table border="1">
 <tr><th>Mode</th><th>Fan</th><th>Target</th>
 <th>$fromTstat</th>
