@@ -34,8 +34,28 @@
 ** delete all the messages we processed from the store-and-forward
 ** queue in the WirelessGateway.
 */
+static const size_t BUFSIZE = 1024;
 static void GetMessages(w5xdInsteon::PlmMonitorIO& modem);
 static void DeleteFromGateway(w5xdInsteon::PlmMonitorIO& modem, unsigned oldestMessageId);
+static std::string readResponse(w5xdInsteon::PlmMonitorIO& modem)
+{
+    // a bit for modem to respond
+    std::string response;
+    std::unique_ptr<unsigned char[]> buf(new unsigned char[BUFSIZE]);
+    for (;;)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        unsigned w;
+        if (!modem.Read(buf.get(), BUFSIZE, &w))
+            break;
+        if (w == 0)
+            break; // timed out--didn't get anything so we're done  
+        for (unsigned i = 0; i < w; i++)
+            response += buf[i];
+    }
+    return response;
+}
+
 
 int main(int argc, char* argv[])
 {
@@ -102,6 +122,8 @@ int main(int argc, char* argv[])
         std::ostringstream oss;
         oss << "SendMessageToNode " << sendNodeId << " " << messageForNode << "\r";
         modem.Write((const unsigned char*)oss.str().c_str(), oss.str().length());
+	auto response = readResponse(modem);
+	std::cout << response;
     }
     return 0;
 }
@@ -143,7 +165,7 @@ static bool parseForString(char c, const char* Text, size_t TextSize, unsigned& 
     return false;
 }
 
-static const size_t BUFSIZE = 1024;
+static float CtoF(float c) { return 32.f + c * 9.0f / 5.0f; }
 
 static void GetMessages(w5xdInsteon::PlmMonitorIO& modem)
 {
@@ -316,20 +338,20 @@ QueueBytesFree 9
                     const char* q = strstr(line.c_str(), "Ti:");
                     if (q)
                     {
-                        Ti = atof(q + 3);
+                        Ti = static_cast<float>(atof(q + 3));
                         q = strstr(line.c_str(), "To:");
                         if (q)
                         {
-                            To = atof(q + 3);
+                            To = static_cast<float>(atof(q + 3));
                             q = strstr(line.c_str(), "Ts:");
                             if (q)
-			    {
-				q += 3;
-                                Ts = atof(q);
-				while (*q && !isspace(*q))
-					q += 1;
-				hvacreport = q;
-			    }
+                            {
+                                q += 3;
+                                Ts = static_cast<float>(atof(q));
+                                while (*q && !isspace(*q))
+                                    q += 1;
+                                hvacreport = q;
+                            }
                         }
                     }
                     state = HVACNODE1;
@@ -479,7 +501,7 @@ QueueBytesFree 9
             if (static_cast<int>(state) < static_cast<int>(HVACNODE1))
             {
                 oss << nodeId << " " << buf << " " << std::fixed << std::setw(6) << std::setprecision(2) <<
-                    tempC / 5.f * 9.f + 32.f << // present as farenheit
+                    CtoF(tempC) << // present as farenheit
                     " " <<
                     nodeBattery << " " <<
                     rssiVal << " " <<
@@ -496,9 +518,9 @@ QueueBytesFree 9
             else if (state == HVACNODE1)
             {
                 if (Ti != 0 || To != 0 || Ts != 0)
-                    oss << nodeId << " " << buf << " " << rssiVal << " HVAC Ti:" << 32.0 + Ti * 9.0 / 5.0 <<
-                    " To:" << 32.0 + To * 9.0 / 5.0 <<
-                    " Ts:" << 32.0 + Ts * 9.0 / 5.0 << " " << hvacreport;
+                    oss << nodeId << " " << buf << " " << rssiVal << " HVAC Ti:" << CtoF(Ti) <<
+                    " To:" << CtoF(To) <<
+                    " Ts:" << CtoF(Ts) << " " << hvacreport;
             }
             if (!oss.str().empty())
                 std::cout << oss.str() << std::endl;
@@ -518,19 +540,7 @@ static void DeleteFromGateway(w5xdInsteon::PlmMonitorIO& modem, unsigned oldestM
     msg << "DeleteMessagesFromId " << oldestMessageId << "\r";
     modem.Write(const_cast<unsigned char*>(reinterpret_cast<const unsigned char*>(msg.str().c_str())), msg.str().length());
     // a bit for modem to respond
-    std::string response;
-    std::unique_ptr<unsigned char[]> buf(new unsigned char[BUFSIZE]);
-    for (;;)
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        unsigned w;
-        if (!modem.Read(buf.get(), BUFSIZE, &w))
-            break;
-        if (w == 0)
-            break; // timed out--didn't get anything so we're done  
-        for (unsigned i = 0; i < w; i++)
-            response += buf[i];
-    }
+    std::string response = readResponse(modem);
     if (!response.empty())
         std::cerr << "Modem" << response << std::endl;
 }

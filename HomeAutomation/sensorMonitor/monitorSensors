@@ -3,11 +3,15 @@
 # perl program that defines the main entry point to the
 # sensor monitoring server
 # The first parameter must be the path to the HouseConfiguration.ini
+# The second parameter is optional, and would be an IP port number for our HTTP server
 
 use strict;
 use Carp qw( croak );
-
 use AppConfig;
+
+require HTTP::Daemon;
+require IO::Select;
+use HTTP::Status;
 
 # packages we'll use to call their polling method
 require hvac::PollWeatherGov;
@@ -16,6 +20,9 @@ require hvac::PollModtronix;
 require hvac::PollWirelessGateway;
 
 my $HouseConfFileName = shift;
+my $portNumber        = shift;
+my %pagesLoaded;    # web pages are found among other ini file entries.
+my $ListenLimit = 3;
 
 croak "HouseConfig.ini required" if ( !defined $HouseConfFileName );
 
@@ -39,9 +46,29 @@ my @waitTime;      # how long to wait between
 my @waitedTime;    # how long have waited
 
 my @eventprocs;    # who wants to see the results
+my @needhvac;      # who wants to see HVAC lines when polled
 
 my $key;
 my $value;
+
+while ( ( $key, $value ) = each(%eventvars) ) {
+    if ( $key =~ m/^CHECK_OUTSIDE/ ) {
+        eval "require $value";
+        if ($@) {
+            die("Cannot load $value : $@");
+        }
+        my $process = $value->new( \%bashVars );
+        push( @eventprocs, $process );
+        if ( $process->can("process_request") ) {
+            $value =~ s/::/\//g;
+            $value = "/" . $value;
+            $pagesLoaded{$value} = $process;
+            print STDERR "page loaded: " . $value . "\n";
+        }
+        if ( $process->can("next_hvac_line") ) { push( @needhvac, $process ); }
+    }
+}
+
 while ( ( $key, $value ) = each(%vars) ) {
     my @v = split( ' ', $value );
     if ( $key eq "WEATHERGOV" ) {
@@ -66,22 +93,28 @@ while ( ( $key, $value ) = each(%vars) ) {
         push( @tasks, hvac::PollModtronix->new(@v) );
     }
     elsif ( $key eq "WIRELESSGATEWAY" ) {
-        croak "At least two arguments required for WIRELESSGATEWAY" if scalar @v < 2;
+        croak "At least two arguments required for WIRELESSGATEWAY"
+          if scalar @v < 2;
         push( @waitTime,   shift @v );
         push( @waitedTime, 0 );          #arrange to poll once on startup
         unshift( @v, \%bashVars );
-        push( @tasks, hvac::PollWirelessGateway->new(@v) );
+        my $wg = hvac::PollWirelessGateway->new(@v);
+        $wg->need_hvac(\@needhvac);
+        push( @tasks, $wg );
     }
 }
 
-while ( ( $key, $value ) = each(%eventvars) ) {
-    if ( $key eq "CHECK_OUTSIDE" ) {
-        eval "require $value";
-        if ($@) {
-            die("Cannot load $value : $@");
-        }
-        push( @eventprocs, $value->new( \%bashVars ) );
-    }
+my $selector = IO::Select->new();
+my $daemon;
+if ( defined $portNumber ) {
+    $daemon = HTTP::Daemon->new(
+        LocalAddr => 'localhost',
+        LocalPort => $portNumber,
+        Listen    => $ListenLimit,
+    ) || die;
+
+    print STDERR "My URL is: \"", $daemon->url, "\"\n";
+    $selector->add($daemon);
 }
 
 %vars      = ();
@@ -93,9 +126,8 @@ while (1) {
     my $i = 0;
     foreach my $task (@tasks) {
         if ( --$waitedTime[$i] <= 0 ) {
-            $task->poll();
-
-            #pass this polled event on to eventprocs
+            $task->poll();    #poll, and then ....
+                              #...pass this polled event on to eventprocs
             if ( $task->can("notifyTemperature") ) {
                 foreach my $eproc (@eventprocs) {
                     if ( $eproc->can("temperatureEvent") ) {
@@ -107,5 +139,41 @@ while (1) {
         }
         $i += 1;
     }
-    sleep 1;
+
+    # check listening socket for incoming web requests
+    while ( my @ready = $selector->can_read(1) ) {
+        if ( scalar @ready <= 0 ) { last; }
+        foreach my $fh (@ready) {
+            if ( $fh == $daemon ) {
+
+                # Create a new socket
+                my $c = $daemon->accept;
+                $selector->add($c);
+            }
+            else {
+                # Process socket
+                my $result = 0;
+                if ( my $r = $fh->get_request ) {
+                    my $path   = $r->uri->path;
+                    my $loaded = $pagesLoaded{$path};
+                    print STDERR "monitorSensors process request " . $path
+                      . "\n";
+                    if ( defined $loaded ) {
+                        $loaded->process_request( $fh, $r );
+                    }
+                    else {
+                        $fh->send_error(RC_NOT_FOUND);
+                    }
+                    $result = 1;
+                }
+
+                # Maybe we have finished with the socket
+                if ( $result == 0 ) {
+                    $selector->remove($fh);
+                    $fh->close;
+                }
+            }
+        }
+    }
 }
+
