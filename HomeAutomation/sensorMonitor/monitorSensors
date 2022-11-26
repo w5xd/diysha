@@ -58,14 +58,14 @@ while ( ( $key, $value ) = each(%eventvars) ) {
             die("Cannot load $value : $@");
         }
         my $process = $value->new( \%bashVars );
-        push( @eventprocs, $process );
+        push( @eventprocs, $process ) if ( $process->can("temperatureEvent") );
         if ( $process->can("process_request") ) {
             $value =~ s/::/\//g;
             $value = "/" . $value;
             $pagesLoaded{$value} = $process;
             print STDERR "page loaded: " . $value . "\n";
         }
-        if ( $process->can("next_hvac_line") ) { push( @needhvac, $process ); }
+        push( @needhvac, $process ) if ( $process->can("next_hvac_line") );
     }
 }
 
@@ -99,7 +99,7 @@ while ( ( $key, $value ) = each(%vars) ) {
         push( @waitedTime, 0 );          #arrange to poll once on startup
         unshift( @v, \%bashVars );
         my $wg = hvac::PollWirelessGateway->new(@v);
-        $wg->need_hvac(\@needhvac);
+        $wg->need_hvac( \@needhvac );
         push( @tasks, $wg );
     }
 }
@@ -130,9 +130,7 @@ while (1) {
                               #...pass this polled event on to eventprocs
             if ( $task->can("notifyTemperature") ) {
                 foreach my $eproc (@eventprocs) {
-                    if ( $eproc->can("temperatureEvent") ) {
-                        $task->notifyTemperature($eproc);
-                    }
+                    $task->notifyTemperature($eproc);
                 }
             }
             $waitedTime[$i] = $waitTime[$i];

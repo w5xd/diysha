@@ -35,7 +35,7 @@
 ** queue in the WirelessGateway.
 */
 static const size_t BUFSIZE = 1024;
-static void GetMessages(w5xdInsteon::PlmMonitorIO& modem);
+static void GetMessages(w5xdInsteon::PlmMonitorIO& modem, bool printUnprocessed );
 static void DeleteFromGateway(w5xdInsteon::PlmMonitorIO& modem, unsigned oldestMessageId);
 static std::string readResponse(w5xdInsteon::PlmMonitorIO& modem)
 {
@@ -62,11 +62,14 @@ int main(int argc, char* argv[])
     unsigned oldestToDelete(0);
     bool doDelete(false);
     bool doGet(false);
+    bool printUnprocessed(false);
     int sendNodeId = -1;
+    bool queueSend(false);
     std::string messageForNode = "test";
     if (argc > 2)
     {
-        if (strcmp("GET", argv[2]) == 0)
+        if ((strcmp("GET", argv[2]) == 0) ||
+			(printUnprocessed = strcmp("GETALL", argv[2]) == 0))
         {
             if (argc == 3)
                 doGet = true;
@@ -82,10 +85,11 @@ int main(int argc, char* argv[])
             sendNodeId = 254;
             if (argc > 3)
                 sendNodeId = atoi(argv[3]);
-        } else if (strcmp("SEND", argv[2]) == 0)
+        } else if (strcmp("SEND", argv[2]) == 0 ||
+               (queueSend = strcmp("FORWARD", argv[2]) == 0 ))
         {
 	   if (argc < 4)
-		  std::cerr << "SEND requires node id" << std::endl;
+		  std::cerr << "SEND/FORWARD requires node id" << std::endl;
 	   else { 
                 sendNodeId = atoi(argv[3]);
 		messageForNode = "";
@@ -99,7 +103,7 @@ int main(int argc, char* argv[])
     }
     if (!doGet && !doDelete && sendNodeId <= 0)
     {
-        std::cerr << "Usage: procWirelessGateway <COMPORT> GET | DEL | SEND [N] [cmd] | SENDTEST <N>" << std::endl;
+        std::cerr << "Usage: procWirelessGateway <COMPORT> GET | DEL | SEND [N] [cmd] | FORWARD [N] [cmd] | SENDTEST <N>" << std::endl;
         return 1;
     }
     std::string comport;
@@ -114,13 +118,17 @@ int main(int argc, char* argv[])
     }
 
     if (doGet)
-        GetMessages(modem);
+        GetMessages(modem, printUnprocessed);
     else if (doDelete)
         DeleteFromGateway(modem, oldestToDelete);
     else if (sendNodeId > 0)
     {
         std::ostringstream oss;
-        oss << "SendMessageToNode " << sendNodeId << " " << messageForNode << "\r";
+	if (queueSend)
+		oss << "ForwardMessageToNode ";
+	else
+        	oss << "SendMessageToNode ";
+        oss << sendNodeId << " " << messageForNode << "\r";
         modem.Write((const unsigned char*)oss.str().c_str(), oss.str().length());
 	auto response = readResponse(modem);
 	std::cout << response;
@@ -167,7 +175,7 @@ static bool parseForString(char c, const char* Text, size_t TextSize, unsigned& 
 
 static float CtoF(float c) { return 32.f + c * 9.0f / 5.0f; }
 
-static void GetMessages(w5xdInsteon::PlmMonitorIO& modem)
+static void GetMessages(w5xdInsteon::PlmMonitorIO& modem, bool printUnprocessed)
 {
     // send the command to the WirelessGateway
     static const char GETMESSAGES[] = "GetMessages\r";
@@ -524,7 +532,10 @@ QueueBytesFree 9
             }
             if (!oss.str().empty())
                 std::cout << oss.str() << std::endl;
-        }
+        } else if (printUnprocessed)
+	{
+		std::cout << line << std::endl;
+	}
     }
     if (foundEntryToDelete)
         std::cout << "Found delete: " << oldestMessageId << std::endl;
