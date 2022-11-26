@@ -9,11 +9,11 @@ use feature qw(switch);
 
 #html GUI has 5 entries, Pass-through, no-heat-pump, heat, wheat, cool
 our @MapGuiMode = (
-    [ "Pass Through", 0, 0 ],
-    [ "No Heat pump", 1, 0 ],
-    [ "Heat",         2, 0 ],
-    [ "eHeat",        2, 1 ],
-    [ "Cool",         3, 0 ],
+    [ "Pass Through", 0, 0 ],    #0
+    [ "No Heat pump", 1, 0 ],    #1
+    [ "Heat",         2, 0 ],    #2
+    [ "eHeat",        2, 1 ],    #3
+    [ "Cool",         3, 0 ],    #4
 );
 
 sub getCmd {
@@ -22,7 +22,8 @@ sub getCmd {
     my $Temp         = shift;
     my $cmd;
 
-    if ( $temperatureF > 0 ) {
+    if ( $temperatureF > 0 && defined( $self->{_read_from_tstat} ) ) {
+        my $tstatMode = $self->{_thermostat_mode};
 
         #use WirelessGateway to talk to Packet Thermostat
         my $cmdBase =
@@ -32,8 +33,27 @@ sub getCmd {
           . " SEND "
           . $self->{_vars}->{FURNACE_NODEID} . " ";
         if ( $temperatureF < $Temp ) {
+            if ( $tstatMode == 0 ) {
+                $cmd = $cmdBase . "HVAC TYPE=1 MODE=0";
+                $self->{_thermostat_mode} = 1;
+            }
+            elsif ( $tstatMode == 2 ) {
+                $cmd = $cmdBase . "HVAC TYPE=2 MODE=1";
+                $self->{_thermostat_mode} = 3;
+            }
         }
         elsif ( $temperatureF > $Temp ) {
+            if ( $tstatMode == 1 ) {
+                $cmd = $cmdBase . "HVAC TYPE=0 MODE=0";
+                $self->{_thermostat_mode} = 0;
+            }
+            elsif ( $tstatMode == 3 ) {
+                $cmd = $cmdBase . "HVAC TYPE=2 MODE=0";
+                $self->{_thermostat_mode} = 2;
+            }
+        }
+        if ( defined($cmd) && defined( $self->{_read_from_tstat} ) ) {
+            delete( $self->{_read_from_tstat} );
         }
     }
 
@@ -48,8 +68,7 @@ sub next_hvac_line {
     my @all    = split( " ", $line );
     if ( ( scalar @all > 0 ) && $all[0] == $self->{_vars}->{FURNACE_NODEID} ) {
         if ( $idxTgt >= 0 ) {
-            $idxTgt += 4;
-            my $sub    = substr( $line, $idxTgt );
+            my $sub    = substr( $line, $idxTgt + 4 );
             my @spl    = split( " ", $sub );
             my $target = int( 10.0 * $spl[0] );
             $self->{_targetTempCx10} = $target;
@@ -67,7 +86,10 @@ sub next_hvac_line {
                 foreach (@MapGuiMode) {
                     if ( $t_type == @{$_}[1] && $t_mode == @{$_}[2] ) {
                         $self->{_thermostat_mode} = $i;
-                        $self->{_fan_mode}        = $f_mode eq '1' ? 1 : 0;
+                        $self->{_fan_mode} =
+                          $f_mode eq '1'
+                          ? 1
+                          : ( $f_mode eq '0' ? 0 : undef );
                         $self->{_read_from_tstat} = 1;
                         last;
                     }
@@ -122,13 +144,14 @@ sub process_request {
     }
 
     my @commands;
-            #use WirelessGateway to talk to Packet Thermostat
-            my $cmdBase =
-                $ENV{HTTPD_LOCAL_ROOT}
-              . "/../hvac/procWirelessGateway "
-              . $self->{_vars}->{FURNACE_GATEWAY_DEVICE}
-              . " SEND "
-              . $self->{_vars}->{FURNACE_NODEID} . " ";
+
+    #use WirelessGateway to talk to Packet Thermostat
+    my $cmdBase =
+        $ENV{HTTPD_LOCAL_ROOT}
+      . "/../hvac/procWirelessGateway "
+      . $self->{_vars}->{FURNACE_GATEWAY_DEVICE}
+      . " SEND "
+      . $self->{_vars}->{FURNACE_NODEID} . " ";
 
     #Do a time sync command if POST asks us too
     if ( defined( $FORM{sync} ) ) {    #user wants the clock synchronized
@@ -146,6 +169,13 @@ sub process_request {
           . $min . " 0 "
           . $wday . "\"";
         push( @commands, $cmdBase . $setting );
+    }
+    elsif (
+           defined( $FORM{commit} )
+        && defined( $self->{_read_from_tstat} )
+        && $self->{_thermostat_mode} >= 2  )
+    {
+        push( @commands, $cmdBase . "HVAC COMMIT" );
     }
     elsif ( defined( $FORM{submit} ) )
     {    #user wants to send the thermostat a command
@@ -232,11 +262,16 @@ FirstSectionDone
     }
 
     my $targetTemp      = $self->{_targetTempCx10};
+    my $fanMode         = $self->{_fan_mode};
     my $thermostat_mode = $self->{_thermostat_mode};
     my $s               = "";
     if ( !defined($thermostat_mode) ) {
         $thermostat_mode = -1;
         $s               = "<option value='-1'></option>";
+    }
+    if ( !defined($thermostat_mode) || ( $thermostat_mode < 2 ) ) {
+        undef $targetTemp;
+        undef $fanMode;
     }
     my $s0 = "";
     my $s1 = "";
@@ -250,8 +285,7 @@ FirstSectionDone
         when (3) { $s3 = "selected"; }
         when (4) { $s4 = "selected"; }
     }
-    my $fanMode = $self->{_fan_mode};
-    my $fm      = "";
+    my $fm = "";
     if ( !defined($fanMode) ) {
         $fanMode = -1;
         $fm      = "<option value='-1'></option>";
@@ -293,7 +327,7 @@ $fm
 <select name="temperature_setting" size=1>
 Form_print_done1
 
-    if ( !defined($targetTemp) ) {
+    if ( !defined($targetTemp) || $targetTemp == 0 ) {
         $msg .= "<option></option>\n";
     }
     for (
@@ -334,6 +368,12 @@ Form_print_done2
  method="POST">
 <p>
 <input type="submit" name="sync" value="Synchronize thermostat clock" />
+</p>
+</form>
+<form action="" 
+ method="POST">
+<p>
+<input type="submit" name="commit" value="Persist" />
 </p>
 </form>
 <font size=+1><b>Packet Thermostat</b></font>
