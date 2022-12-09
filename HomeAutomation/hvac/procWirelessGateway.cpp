@@ -34,52 +34,78 @@
 ** delete all the messages we processed from the store-and-forward
 ** queue in the WirelessGateway.
 */
-static void GetMessages(w5xdInsteon::PlmMonitorIO& modem);
+static const size_t BUFSIZE = 1024;
+static void GetMessages(w5xdInsteon::PlmMonitorIO& modem, bool printUnprocessed );
 static void DeleteFromGateway(w5xdInsteon::PlmMonitorIO& modem, unsigned oldestMessageId);
+static std::string readResponse(w5xdInsteon::PlmMonitorIO& modem)
+{
+    // a bit for modem to respond
+    std::string response;
+    std::unique_ptr<unsigned char[]> buf(new unsigned char[BUFSIZE]);
+    for (;;)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        unsigned w;
+        if (!modem.Read(buf.get(), BUFSIZE, &w))
+            break;
+        if (w == 0)
+            break; // timed out--didn't get anything so we're done  
+        for (unsigned i = 0; i < w; i++)
+            response += buf[i];
+    }
+    return response;
+}
 
 int main(int argc, char* argv[])
 {
     unsigned oldestToDelete(0);
     bool doDelete(false);
     bool doGet(false);
+    bool printUnprocessed(false);
     int sendNodeId = -1;
+    bool queueSend(false);
     std::string messageForNode = "test";
     if (argc > 2)
     {
-        if (strcmp("GET", argv[2]) == 0)
+        if ((strcmp("GET", argv[2]) == 0) ||
+            (printUnprocessed = strcmp("GETALL", argv[2]) == 0))
         {
             if (argc == 3)
                 doGet = true;
-        } else if (strcmp("DEL", argv[2]) == 0)
+        }
+        else if (strcmp("DEL", argv[2]) == 0)
         {
             if (argc == 4)
             {
                 doDelete = true;
                 oldestToDelete = atoi(argv[3]);
             }
-        } else if (strcmp("SENDTEST", argv[2]) == 0)
+        }
+        else if (strcmp("SENDTEST", argv[2]) == 0)
         {
             sendNodeId = 254;
             if (argc > 3)
                 sendNodeId = atoi(argv[3]);
-        } else if (strcmp("SEND", argv[2]) == 0)
+        }
+        else if (strcmp("SEND", argv[2]) == 0 ||
+            (queueSend = strcmp("FORWARD", argv[2]) == 0))
         {
-	   if (argc < 4)
-		  std::cerr << "SEND requires node id" << std::endl;
-	   else { 
+            if (argc < 4)
+                std::cerr << "SEND/FORWARD requires node id" << std::endl;
+            else {
                 sendNodeId = atoi(argv[3]);
-		messageForNode = "";
-		for (int i = 4; i < argc; i++)
-		{
-			messageForNode += argv[i];
-			messageForNode += " ";
-		}
-	   }
+                messageForNode = "";
+                for (int i = 4; i < argc; i++)
+                {
+                    messageForNode += argv[i];
+                    messageForNode += " ";
+                }
+            }
         }
     }
     if (!doGet && !doDelete && sendNodeId <= 0)
     {
-        std::cerr << "Usage: procWirelessGateway <COMPORT> GET | DEL | SEND [N] [cmd] | SENDTEST <N>" << std::endl;
+        std::cerr << "Usage: procWirelessGateway <COMPORT> GET | DEL | SEND [N] [cmd] | FORWARD [N] [cmd] | SENDTEST <N>" << std::endl;
         return 1;
     }
     std::string comport;
@@ -94,14 +120,20 @@ int main(int argc, char* argv[])
     }
 
     if (doGet)
-        GetMessages(modem);
+        GetMessages(modem, printUnprocessed);
     else if (doDelete)
         DeleteFromGateway(modem, oldestToDelete);
     else if (sendNodeId > 0)
     {
         std::ostringstream oss;
-        oss << "SendMessageToNode " << sendNodeId << " " << messageForNode << "\r";
+        if (queueSend)
+            oss << "ForwardMessageToNode ";
+        else
+            oss << "SendMessageToNode ";
+        oss << sendNodeId << " " << messageForNode << "\r";
         modem.Write((const unsigned char*)oss.str().c_str(), oss.str().length());
+        auto response = readResponse(modem);
+        std::cout << response;
     }
     return 0;
 }
@@ -143,9 +175,15 @@ static bool parseForString(char c, const char* Text, size_t TextSize, unsigned& 
     return false;
 }
 
-static const size_t BUFSIZE = 1024;
+static float CtoF(float c) { return 32.f + c * 9.0f / 5.0f; }
 
-static void GetMessages(w5xdInsteon::PlmMonitorIO& modem)
+/* The main thing we do in this executable that cannot be easily done elsewhere is attach local time timestamp
+*  to the messages read from the gateway.
+*  Doing the unit conversion was a design mistake, but degrees F are written into old log files that, in turn,
+*  are displayed on graphs, so that mistake cannot be corrected until/unless the work to deal with those
+*  old files is done.
+*/
+static void GetMessages(w5xdInsteon::PlmMonitorIO& modem, bool printUnprocessed)
 {
     // send the command to the WirelessGateway
     static const char GETMESSAGES[] = "GetMessages\r";
@@ -209,6 +247,7 @@ QueueBytesFree 9
     time_t now;
     now = time(NULL);
 
+
     // track WirelessGateway message ID to delete after reading
     // (Gateway has limited memory. We have to tell it we have
     // retrieved successfully to force it delete.)
@@ -219,8 +258,9 @@ QueueBytesFree 9
         QUEUE, MSGID, AGE, REC, RSSI, NODEID,
         NODECOUNT1, NODECOUNT2, NODECOUNT3,
         NODEBATTERY1, NODEBATTERY2, NODEBATTERY3,
-        NODETEMPERATURE1, NODETEMPERATURE2, NODE_RH1, NODE_RH2, NODE_RH3, PARSE_SUCCESS,
-        HVACNODE1, HVACNODE2
+        NODETEMPERATURE1, NODETEMPERATURE2, NODE_RH1, NODE_RH2, NODE_RH3,
+        PARSE_SUCCESS,
+        HVACNODE1, HVACNODE2,
     };
 
     // for every line in the gateway response..
@@ -231,6 +271,11 @@ QueueBytesFree 9
         //Queue 33 5299 REC -59 3 C:44, B:263, T:+20.31
         // ...or...
         //Queue 44 3 REC -28 6 C:0, B:273, T:+26.18 R:58.27
+        //
+        //PacketRaingauge messages look like:
+        //Queue 45 3 REC -59 21 C:1, B:273, T:+26.18, RG:1, F:2100 
+        // RG:1 means 1mm of rain since last report. 
+        // C, B and T are like PacketThermometer
 
         LineParseState_t state(QUEUE);
         unsigned counter(0); // count characters in the current state
@@ -247,6 +292,7 @@ QueueBytesFree 9
         float humidityPercent(-1.f);
         std::string hvacreport;
         float Ti(0), To(0), Ts(0);
+        std::string rainGauge;
 
         unsigned lineIdx(0); // count characters in the line
         for (auto const& c : line)
@@ -260,7 +306,7 @@ QueueBytesFree 9
             static const char BText[] = "B:";
             static const char TText[] = "T:";
             static const char RhText[] = "R:";
-
+            static const char RainGaugeText[] = "RG:";
 
             bool error(false);// error flag for this character. aborts line processing
             switch (state)
@@ -290,7 +336,8 @@ QueueBytesFree 9
                 {
                     negRssi = true;
                     counter += 1;
-                } else if (parseForUnsigned(c, rssi, counter, error))
+                }
+                else if (parseForUnsigned(c, rssi, counter, error))
                     state = NODEID;
                 break;
 
@@ -308,18 +355,25 @@ QueueBytesFree 9
                     const char* q = strstr(line.c_str(), "Ti:");
                     if (q)
                     {
-                        Ti = atof(q + 3);
+                        Ti = static_cast<float>(atof(q + 3));
                         q = strstr(line.c_str(), "To:");
                         if (q)
                         {
-                            To = atof(q + 3);
+                            To = static_cast<float>(atof(q + 3));
                             q = strstr(line.c_str(), "Ts:");
                             if (q)
-                                Ts = atof(q + 3);
+                            {
+                                q += 3;
+                                Ts = static_cast<float>(atof(q));
+                                while (*q && !isspace(*q))
+                                    q += 1;
+                                hvacreport = q;
+                            }
                         }
                     }
                     state = HVACNODE1;
-                } else if (error && (error = false, parseForString(c, HviText, sizeof(HviText), counter, error)))
+                }
+                else if (error && (error = false, parseForString(c, HviText, sizeof(HviText), counter, error)))
                     state = HVACNODE2;
                 if (error)
                     hvacreport.clear();
@@ -340,7 +394,8 @@ QueueBytesFree 9
                         error = false;
                         state = NODECOUNT3;
                         counter = 0;
-                    } else
+                    }
+                    else
                         state = NODEBATTERY1;
                 }
                 break;
@@ -366,7 +421,8 @@ QueueBytesFree 9
                         error = false;
                         state = NODEBATTERY3;
                         counter = 0;
-                    } else
+                    }
+                    else
                         state = NODETEMPERATURE1;
                 }
                 break;
@@ -400,6 +456,18 @@ QueueBytesFree 9
                     state = NODE_RH2;
                     counter = 0;
                 }
+                else if (c == ',')
+                {
+                    std::string temp = line.substr(lineIdx + 1);
+                    while (!temp.empty() && isspace(*temp.begin()))
+                        temp.erase(temp.begin());
+                    if (temp.find(RainGaugeText) != temp.npos)
+                    {
+                        rainGauge = temp;
+                        state = PARSE_SUCCESS;
+                    }
+                    counter = 0;
+                }
                 break;
 
             case NODE_RH2:
@@ -417,7 +485,9 @@ QueueBytesFree 9
                 }
             }
             break;
+
             }
+
             lineIdx += 1;
 
             if (error)
@@ -434,39 +504,46 @@ QueueBytesFree 9
             time_t thisEvent = now - age; // account for time inside gateway
             local = localtime(&thisEvent);
             char buf[64];
-                // old unix-style time string for first two columns in log
+            // old unix-style time string for first two columns in log
             sprintf(buf, "%04d/%02d/%02d %02d:%02d:%02d",
-                    local->tm_year + 1900,
-                    local->tm_mon + 1,
-                    local->tm_mday,
-                    local->tm_hour,
-                    local->tm_min,
-                    local->tm_sec);
+                local->tm_year + 1900,
+                local->tm_mon + 1,
+                local->tm_mday,
+                local->tm_hour,
+                local->tm_min,
+                local->tm_sec);
 
             short rssiVal = negRssi ? -(short)rssi : rssi;
 
             if (static_cast<int>(state) < static_cast<int>(HVACNODE1))
             {
                 oss << nodeId << " " << buf << " " << std::fixed << std::setw(6) << std::setprecision(2) <<
-                    tempC / 5.f * 9.f + 32.f << // present as farenheit
+                    CtoF(tempC) << // present as farenheit
                     " " <<
                     nodeBattery << " " <<
                     rssiVal << " " <<
                     nodeCount;
                 if (humidityPercent > 0.f)
                     oss << " " << humidityPercent;
-            } else if (state == HVACNODE2)
+                if (!rainGauge.empty())
+                    oss << " " << rainGauge;
+            }
+            else if (state == HVACNODE2)
             {
                 oss << nodeId << " " << buf << " " << rssiVal << " HVAC " << hvacreport;
-            } else if (state == HVACNODE1)
-            {  if (Ti != 0 || To != 0 || Ts != 0)
-                oss << nodeId << " " << buf << " " << rssiVal << " HVAC Ti=" << 32.0 + Ti * 9.0 / 5.0 <<
-                    " To=" << 32.0 + To * 9.0 / 5.0 <<
-                    " Ts=" << 32.0 + Ts * 9.0 / 5.0;
             }
-	    if (!oss.str().empty())
+            else if (state == HVACNODE1)
+            {
+                if (Ti != 0 || To != 0 || Ts != 0)
+                    oss << nodeId << " " << buf << " " << rssiVal << " HVAC Ti:" << CtoF(Ti) <<
+                    " To:" << CtoF(To) <<
+                    " Ts:" << CtoF(Ts) << " " << hvacreport;
+            }
+            if (!oss.str().empty())
                 std::cout << oss.str() << std::endl;
         }
+        else if (printUnprocessed)
+		    std::cout << line << std::endl;
     }
     if (foundEntryToDelete)
         std::cout << "Found delete: " << oldestMessageId << std::endl;
@@ -482,19 +559,7 @@ static void DeleteFromGateway(w5xdInsteon::PlmMonitorIO& modem, unsigned oldestM
     msg << "DeleteMessagesFromId " << oldestMessageId << "\r";
     modem.Write(const_cast<unsigned char*>(reinterpret_cast<const unsigned char*>(msg.str().c_str())), msg.str().length());
     // a bit for modem to respond
-    std::string response;
-    std::unique_ptr<unsigned char[]> buf(new unsigned char[BUFSIZE]);
-    for (;;)
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        unsigned w;
-        if (!modem.Read(buf.get(), BUFSIZE, &w))
-            break;
-        if (w == 0)
-            break; // timed out--didn't get anything so we're done  
-        for (unsigned i = 0; i < w; i++)
-            response += buf[i];
-    }
+    std::string response = readResponse(modem);
     if (!response.empty())
         std::cerr << "Modem" << response << std::endl;
 }
