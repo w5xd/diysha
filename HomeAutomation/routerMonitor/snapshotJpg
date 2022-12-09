@@ -1,7 +1,0 @@
-#!/bin/bash
-let CURLOG=1
-while [ $CURLOG -gt 0 ]; do
-    sleep 1h 
-    curl --silent http://localhost:8081 | ../readMotion/readMotion > `date +./snaps/%Y_%m_%d_%H%M.jpg`
-    let CURLOG=CURLOG+1
-done

@@ -10,7 +10,7 @@
 
 case "$1" in
 'start')
-        su www-data -c /var/diysha/HomeAutomation/routerMonitor/start -s /bin/bash
+        su www-data -c /var/diysha/HomeAutomation/startup/startAll -s /bin/bash
         ;;
 'stop')
         ;;
