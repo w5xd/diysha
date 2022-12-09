@@ -1,4 +1,3 @@
-
 # perl class to call the various classes that can report outdoor temperature
 # HouseConfiguration.ini declares them in [SENSOR_MONITOR_STARTUP]
 
@@ -8,6 +7,7 @@ use strict;
 use feature qw(switch);
 
 #html GUI has 5 entries, Pass-through, no-heat-pump, heat, wheat, cool
+#These settings are matched to the EEPROM setup in PacketThermostatSettings.cpp
 our @MapGuiMode = (
     [ "Pass Through", 0, 0 ],    #0
     [ "No Heat pump", 1, 0 ],    #1
@@ -18,7 +18,7 @@ our @MapGuiMode = (
 
 our $DEBUG = 0;
 
-sub getCmd {
+sub getCmd {  # method to deal with outdoor temperature changes.
     my $self         = shift;
     my $temperatureF = shift;
     my $Temp         = shift;
@@ -55,7 +55,8 @@ sub getCmd {
             }
         }
         if ( defined($cmd) ) {
-	    print STDERR "getCmd changed mode to " . $self->{_thermostat_mode} . " from " . $tstatMode . "\n" if $DEBUG;
+	    print STDERR "getCmd changed mode to " . $self->{_thermostat_mode} . 
+	         " from " . $tstatMode . "\n" if $DEBUG;
             delete( $self->{_read_from_tstat} );
         }
     }
@@ -63,6 +64,7 @@ sub getCmd {
     $cmd;
 }
 
+#extract what we need for our object state from an incoming packet from PacketThermostat
 sub next_hvac_line {
     my $self   = shift;
     my $line   = shift;
@@ -104,6 +106,7 @@ sub next_hvac_line {
     }
 }
 
+# http processing
 sub process_request {
     my $self = shift;
     my $c    = shift;
@@ -339,8 +342,10 @@ Form_print_done1
       )
     {
         my $thisTempCx10 = int( ( $temperature - 32 ) * 50 / 9 );
+	my $nextTempCx10 = int( ( (1 + $temperature) - 32 ) * 50 / 9 );
         $msg .= "<option value='" . $thisTempCx10 . "'";
-        if ( defined($targetTemp) && ( $thisTempCx10 == $targetTemp ) ) {
+        if ( defined($targetTemp) && ( $thisTempCx10 <= $targetTemp ) &&
+                                     ( $nextTempCx10 > $targetTemp) ) {
             $msg .= " selected";
         }
         $msg .= ">$temperature</option>\n";
