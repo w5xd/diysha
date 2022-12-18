@@ -194,6 +194,8 @@ sub process_request {
                 my $m = $self->{_thermostat_mode};
                 if ( !defined($m) || $m != $tmode ) {
                     $self->{_thermostat_mode} = $tmode;
+                    if (exists $self->{_targetTempCx10}) {
+                    	delete $self->{_targetTempCx10}; }
 		    print STDERR "proc_event set tmode=" . $tmode . "\n" if $DEBUG;
                     my $cmd =
                         $cmdBase
