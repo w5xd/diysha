@@ -127,7 +127,7 @@ form_done
 <input type="submit" value=">" name="next" ><br/>
 <input type="radio" name="timep" value="day" $day_checked> Day
 <input type="radio" name="timep" value="week" $week_checked > Week
-<input type="radio" name="timep" value="month"$mon_checked > Month
+<input type="radio" name="timep" value="month" $mon_checked > Month
 <input type="radio" name="timep" value="year" $year_checked > Year
 <input type="hidden" value="$graph_time" name="time_stamp" >
 form_done2
