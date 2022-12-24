@@ -193,9 +193,10 @@ set output
 set grid xtics ytics
 show grid
 relay(x) = (int(x) & 4) ? 2 : (x >= 32 ? ( x >= 40 ? 4 : 1/0) : (x >= 8 ? 3 : 1/0))
+c2f(x) = 32 + ((9 * x) / 5)
 # plot command last in this script
 plot \\
-   "$ENV{'FURNACE_LOG_LOCATION'}/HvacTemperature96.log" using 1:((\$8 == 0 && \$9 == 0) ? 1/0 : 32 + (9 * \$8 / 5)) with lines lw 2 lc rgb "#22aaaaaa" title "target", \\
+   "$ENV{'FURNACE_LOG_LOCATION'}/HvacTemperature96.log" using 1:((\$8 == 0 && \$9 == 0) ? 1/0 : c2f(\$8)) with lines lw 2 lc rgb "#22aaaaaa" title "target", \\
    "$ENV{'FURNACE_LOG_LOCATION'}/wirelessThermometer6.log" using 1:3 with lines title "living room", \\
    "$ENV{'FURNACE_LOG_LOCATION'}/wirelessThermometer11.log" using 1:3 with lines title "indoor (2)", \\
    "$ENV{'FURNACE_LOG_LOCATION'}/wirelessThermometer3.log" using 1:3 with lines title "outside", \\
