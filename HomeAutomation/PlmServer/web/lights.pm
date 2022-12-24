@@ -92,7 +92,7 @@ my @pairs;
 my $pair;
 my $name;
 my $value;
-my $fromCache = 0;
+my $fromCache = 0; #not used
 my %FORM;
 
 # Read in text
@@ -168,6 +168,8 @@ if ($DEBUG) {
 }
 
 my $Modem = PowerLineModule::Modem->new( $ModemDevice, 0, "" );
+#this sort is to honor the user's LightsPageOrder setting
+my @SortedKeys = sort {$a <=> $b} ( keys %sortHash );
 if ( $Modem->openOk() == 0 ) {
     $msg .= "Oops, no modem device\n";
 }
@@ -176,15 +178,13 @@ else {
         push( @DimmerHandles, $Modem->getDimmer($_) );
     }
     if ( defined( $FORM{Update} ) && ( $FORM{Update} eq "Update" ) ) {
-        $fromCache = 0;
-        if ( !$DEBUG ) {
+        if ( $DEBUG ) {
             $msg .= "Location: " . File::Basename::basename($0) . "\n\n";
         }
-        my $i = 0;
-	#the sort is to honor the user's LightsPageOrder setting
-        foreach my $k ( sort {$a <=> $b} ( keys %sortHash ) ) {
+        my $i = 1;
+        foreach my $k ( @SortedKeys ) {
             my $idx = $sortHash{$k};
-            my $cellName = "DimmerNewVal" . ( $i + 1 );
+            my $cellName = "DimmerNewVal" . $i;
             if ( defined( $FORM{"$cellName"} ) ) {
                 my $new_val = $FORM{"$cellName"};
                 if ( ( $new_val ne "" ) && ( $new_val >= 0 ) ) {
@@ -216,13 +216,13 @@ $msg .=<<Form_print_done2;
 Form_print_done2
 
 my $i = 0;
-foreach my $k ( sort {$a <=> $b} (keys %sortHash )) {
+foreach my $k ( @SortedKeys ) {
     my $idx = $sortHash{$k};
     my $v   = $DimmerVals[$idx];
     if ( $v < 0 ) { $v = "error"; }
     $i = $i + 1; 
     if ($DEBUG) { $msg .= "<tr><td>";
-        $msg .= "key=".$k."idx= ".$idx." v=".$v." i=".$i;
+        $msg .= "key=".$k." idx= ".$idx." v=".$v." i=".$i;
 	$msg .= "</td></tr>\n";
     }
     $msg .=<<Form_print_row_done;
@@ -241,8 +241,7 @@ $msg .=<<Form_print_done3;
 Form_print_done3
 
 if ($DEBUG) {
-    $msg .= "fromCache: " . $fromCache . "<br/>\n";
-    $msg .= "TESTING: " . @DimmerAddrs . "<br/>\n";
+    $msg .= "\@DimmerAddrs scalar: " . @DimmerAddrs . "<br/>\n";
 }
 my $colorString = "";
 $i           = 0;
@@ -258,7 +257,7 @@ foreach (@DimmerVals) {
         else                { $colorString .= "\"rgb(255,20,150)\" "; }
 
         if ($DEBUG) {
-            $msg .= "value  is " . $_ . "<br/>\n";
+            $msg .= $i . " value  is " . $_ . "<br/>\n";
         }
     }
     $i++;
