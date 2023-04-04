@@ -16,7 +16,7 @@ our @ISA = qw(HomeAutomation::InsteonMonitor);
 
 sub new { #argument--heartbeat timer
 	my ($class) = @_;
-	my $self = $class->SUPER::new($_[1], $_[2]);
+        my $self = $class->SUPER::new(@_[1..scalar(@_)-1]);
 	bless ($self, $class);
 	return $self;
 }
