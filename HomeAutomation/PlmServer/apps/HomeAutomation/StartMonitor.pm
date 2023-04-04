@@ -89,6 +89,8 @@ sub start {
             my $heartbeatHours = $configHash{INSTEON_MONITORS_heartbeat};
             $heartbeatHours = 12 if ( !defined($heartbeatHours) );
             my $monitorEmail = $configHash{INSTEON_MONITORS_email};
+            my $monitorEmailSender = $configHash{INSTEON_MONITORS_sender_email};
+	    if (!defined($monitorEmailSender)) { $monitorEmailSender = "diysha"; }
             my $monitorLogName =
               $ENV{HTTPD_LOCAL_ROOT} . "/htdocs/insteon/EventLog.txt";
             my %MonitorHash;
@@ -171,17 +173,17 @@ sub start {
                                 case "ALL" {
                                     $monObj =
                                       HomeAutomation::AllMonitor->new( $hb,
-                                        $monitorEmail );
+                                        $monitorEmail, $monitorEmailSender );
                                 }
                                 case "WATERLEAK" {
                                     $monObj =
                                       HomeAutomation::WaterLeakMonitor->new(
-                                        $hb, $monitorEmail );
+                                        $hb, $monitorEmail, $monitorEmailSender );
                                 }
                                 case "HEARTBEAT" {
                                     $monObj =
                                       HomeAutomation::InsteonMonitor->new( $hb,
-                                        $monitorEmail );
+                                        $monitorEmail, $monitorEmailSender );
                                 }
                                 else {
                                     print STDERR
