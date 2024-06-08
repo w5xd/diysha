@@ -19,6 +19,7 @@ sub new {
     my $class     = ref($proto) || $proto;
     my $heartbeat = shift;
     my $email     = shift;
+    my $sender_email = shift;
     if ( defined($heartbeat) ) {
         if ( $heartbeat > 0 ) { $heartbeat *= 60 * 60; }    #convert hrs->sec
         else { $heartbeat *= -1; }    #negative is seconds (debugging)
@@ -26,6 +27,7 @@ sub new {
     my $self = {};
     $self->{_heartbeat}     = $heartbeat;
     $self->{_email}         = $email;
+    $self->{_sender_email}  = $sender_email;
     $self->{_notified}      = 0;
     $self->{_actual}        = 0;
     $self->{_acquireLinkTable} = 0;
@@ -69,10 +71,11 @@ sub _sendEventEmail {
     my $dimmer = shift;
     my $lbl  = $dimmer->name();
     my $email  = $self->{_email};
+    my $sender_email = $self->{_sender_email};
     if ( defined($email) ) {
         my $stdOut;
         my $stdIn;
-        my $pid  = open2( $stdOut, $stdIn, "sendmail -f diysha $email" );
+        my $pid  = open2( $stdOut, $stdIn, "sendmail -f $sender_email $email" );
         binmode $stdIn;
         print $stdIn "To: " . $email . "\r\n";
         print $stdIn "Subject: Notification regarding $lbl.\r\n";
