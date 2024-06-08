@@ -6,26 +6,36 @@ use base ("hvac::EventCheckEheat");
 use strict;
 use feature qw(switch);
 
-#html GUI has 5 entries, Pass-through, no-heat-pump, heat, wheat, cool
 #These settings are matched to the EEPROM setup in PacketThermostatSettings.cpp
 our @MapGuiMode = (
-    [ "Pass Through", 0, 0 ],    #0
-    [ "No Heat pump", 1, 0 ],    #1
-    [ "Heat",         2, 0 ],    #2
-    [ "eHeat",        2, 1 ],    #3
-    [ "Cool",         3, 0 ],    #4
+
+    #name           TYPE, MODE, HAS_TEMPERATURE
+    [ "Pass Through", 0, 0, 0 ],    #0
+    [ "No Heat pump", 1, 0, 0 ],    #1
+    [ "Heat",         2, 0, 1 ],    #2
+    [ "eHeat",        2, 1, 1 ],    #3
+    [ "Cool",         3, 0, 1 ],    #4
+    [ "Pass Thru G",  1, 1, 0 ],    #5
 );
+
+my $passthrough1 = 0;
+my $passthrough2 = 5;
+my $maxMode      = 5;
 
 our $DEBUG = 0;
 
-sub getCmd {  # method to deal with outdoor temperature changes.
+sub getCmd {    # method to deal with outdoor temperature changes.
     my $self         = shift;
     my $temperatureF = shift;
     my $Temp         = shift;
     my $cmd;
 
     if ( $temperatureF > 0 && defined( $self->{_read_from_tstat} ) ) {
-        my $tstatMode = $self->{_thermostat_mode};
+        my $tstatMode       = $self->{_thermostat_mode};
+        my $passthroughMode = $self->{_passthroughMode};
+        if ( !defined($passthroughMode) ) {
+            $passthroughMode = $passthrough1;
+        }
 
         #use WirelessGateway to talk to Packet Thermostat
         my $cmdBase =
@@ -35,7 +45,7 @@ sub getCmd {  # method to deal with outdoor temperature changes.
           . " SEND "
           . $self->{_vars}->{FURNACE_NODEID} . " ";
         if ( $temperatureF < $Temp ) {
-            if ( $tstatMode == 0 ) {
+            if ( $tstatMode == $passthrough1 || $tstatMode == $passthrough2 ) {
                 $cmd = $cmdBase . "HVAC TYPE=1 MODE=0";
                 $self->{_thermostat_mode} = 1;
             }
@@ -46,8 +56,11 @@ sub getCmd {  # method to deal with outdoor temperature changes.
         }
         elsif ( $temperatureF > $Temp ) {
             if ( $tstatMode == 1 ) {
-                $cmd = $cmdBase . "HVAC TYPE=0 MODE=0";
-                $self->{_thermostat_mode} = 0;
+                $cmd =
+                  $cmdBase . ( $passthroughMode == $passthrough1 )
+                  ? "HVAC TYPE=0 MODE=0"
+                  : "HVAC TYPE=1 MODE=1";
+                $self->{_thermostat_mode} = $passthroughMode;
             }
             elsif ( $tstatMode == 3 ) {
                 $cmd = $cmdBase . "HVAC TYPE=2 MODE=0";
@@ -55,8 +68,11 @@ sub getCmd {  # method to deal with outdoor temperature changes.
             }
         }
         if ( defined($cmd) ) {
-	    print STDERR "getCmd changed mode to " . $self->{_thermostat_mode} . 
-	         " from " . $tstatMode . "\n" if $DEBUG;
+            print STDERR "getCmd changed mode to "
+              . $self->{_thermostat_mode}
+              . " from "
+              . $tstatMode . "\n"
+              if $DEBUG;
             delete( $self->{_read_from_tstat} );
         }
     }
@@ -91,7 +107,17 @@ sub next_hvac_line {
                 foreach (@MapGuiMode) {
                     if ( $t_type == @{$_}[1] && $t_mode == @{$_}[2] ) {
                         $self->{_thermostat_mode} = $i;
-			print STDERR "next_hvac_line set thermostat_mode=" . $i . "\n" if $DEBUG;
+                        print STDERR "next_hvac_line set thermostat_mode="
+                          . $i . "\n"
+                          if $DEBUG;
+                        if (
+                            defined($1)
+                            && (   ( $1 == $passthrough1 )
+                                || ( $1 == $passthrough2 ) )
+                          )
+                        {
+                            $self->{_passthroughMode} = $1;
+                        }
                         $self->{_fan_mode} =
                           $f_mode eq '1'
                           ? 1
@@ -176,10 +202,9 @@ sub process_request {
           . $wday . "\"";
         push( @commands, $cmdBase . $setting );
     }
-    elsif (
-           defined( $FORM{commit} )
+    elsif (defined( $FORM{commit} )
         && defined( $self->{_read_from_tstat} )
-        && $self->{_thermostat_mode} >= 2  )
+        && $self->{_thermostat_mode} >= 2 )
     {
         push( @commands, $cmdBase . "HVAC COMMIT" );
     }
@@ -190,13 +215,15 @@ sub process_request {
             && defined( $FORM{fan_mode} ) )
         {
             my $tmode = $FORM{thermostat_mode};
-            if ( $tmode >= 0 && $tmode <= 4 ) {
+            if ( defined($tmode) && $tmode >= 0 && $tmode <= $maxMode ) {
                 my $m = $self->{_thermostat_mode};
                 if ( !defined($m) || $m != $tmode ) {
                     $self->{_thermostat_mode} = $tmode;
-                    if (exists $self->{_targetTempCx10}) {
-                    	delete $self->{_targetTempCx10}; }
-		    print STDERR "proc_event set tmode=" . $tmode . "\n" if $DEBUG;
+                    if ( exists $self->{_targetTempCx10} ) {
+                        delete $self->{_targetTempCx10};
+                    }
+                    print STDERR "proc_event set tmode=" . $tmode . "\n"
+                      if $DEBUG;
                     my $cmd =
                         $cmdBase
                       . "HVAC TYPE="
@@ -205,27 +232,32 @@ sub process_request {
                       . $MapGuiMode[$tmode][2];
                     push( @commands, $cmd );
                 }
-            }
-            my $val = $FORM{temperature_setting};
-            if ( $val ne "" && $val >= 70 && $val <= 400 && $tmode >= 2 ) {
-                my $m = $self->{_targetTempCx10};
-                if ( !defined($m) || $m != $val ) {
-                    my $cmd = $cmdBase . "HVAC_SETTINGS " . $val;
-                    push( @commands, $cmd );
-                    $self->{_targetTempCx10} = $val;
+                my $val = $FORM{temperature_setting};
+                if (   $val ne ""
+                    && $val >= 70
+                    && $val <= 400
+                    && $MapGuiMode[$tmode][3] > 0 )
+                {
+                    my $m = $self->{_targetTempCx10};
+                    if ( !defined($m) || $m != $val ) {
+                        my $cmd = $cmdBase . "HVAC_SETTINGS " . $val;
+                        push( @commands, $cmd );
+                        $self->{_targetTempCx10} = $val;
+                    }
+                }
+                $val = $FORM{fan_mode};
+                if ( $val >= 0 && $val <= 1 ) {
+                    my $m = $self->{_fan_mode};
+                    if ( $MapGuiMode[$tmode][3] > 0
+                        && ( !defined($m) || $m != $val ) )
+                    {
+                        my $cmd = $cmdBase . "HVAC FAN=";
+                        $cmd .= ( $val != 0 ) ? "ON" : "OFF";
+                        push( @commands, $cmd );
+                        $self->{_fan_mode} = $val;
+                    }
                 }
             }
-            $val = $FORM{fan_mode};
-            if ( $val >= 0 && $val <= 1 ) {
-                my $m = $self->{_fan_mode};
-                if ( $tmode >= 2 && ( !defined($m) || $m != $val ) ) {
-                    my $cmd = $cmdBase . "HVAC FAN=";
-                    $cmd .= ( $val != 0 ) ? "ON" : "OFF";
-                    push( @commands, $cmd );
-                    $self->{_fan_mode} = $val;
-                }
-            }
-
             if ( scalar(@commands) && defined( $self->{_read_from_tstat} ) ) {
                 delete $self->{_read_from_tstat};
             }
@@ -277,7 +309,10 @@ FirstSectionDone
         $thermostat_mode = -1;
         $s               = "<option value='-1'></option>";
     }
-    if ( !defined($thermostat_mode) || ( $thermostat_mode < 2 ) ) {
+    if (   !defined($thermostat_mode)
+        || ( $thermostat_mode < 0 )
+        || ( $MapGuiMode[$thermostat_mode][3] < 1 ) )
+    {
         undef $targetTemp;
         undef $fanMode;
     }
@@ -286,12 +321,14 @@ FirstSectionDone
     my $s2 = "";
     my $s3 = "";
     my $s4 = "";
+    my $s5 = "";
     given ($thermostat_mode) {
         when (0) { $s0 = "selected"; }
         when (1) { $s1 = "selected"; }
         when (2) { $s2 = "selected"; }
         when (3) { $s3 = "selected"; }
         when (4) { $s4 = "selected"; }
+        when (5) { $s5 = "selected"; }
     }
     my $fm = "";
     if ( !defined($fanMode) ) {
@@ -321,6 +358,7 @@ $s
 <option value="2" $s2 >$MapGuiMode[2][0]</option>
 <option value="3" $s3 >$MapGuiMode[3][0]</option>
 <option value="4" $s4 >$MapGuiMode[4][0]</option>
+<option value="5" $s5 >$MapGuiMode[5][0]</option>
 </select>
 </td>
 <td align='center'>
@@ -344,10 +382,12 @@ Form_print_done1
       )
     {
         my $thisTempCx10 = int( ( $temperature - 32 ) * 50 / 9 );
-	my $nextTempCx10 = int( ( (1 + $temperature) - 32 ) * 50 / 9 );
+        my $nextTempCx10 = int( ( ( 1 + $temperature ) - 32 ) * 50 / 9 );
         $msg .= "<option value='" . $thisTempCx10 . "'";
-        if ( defined($targetTemp) && ( $thisTempCx10 <= $targetTemp ) &&
-                                     ( $nextTempCx10 > $targetTemp) ) {
+        if (   defined($targetTemp)
+            && ( $thisTempCx10 <= $targetTemp )
+            && ( $nextTempCx10 > $targetTemp ) )
+        {
             $msg .= " selected";
         }
         $msg .= ">$temperature</option>\n";

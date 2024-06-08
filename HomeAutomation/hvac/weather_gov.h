@@ -29,7 +29,7 @@ public:
             if (m_timeStamp.length() > 0)
             {   
                 /* of the form:
-                ** Sun, 19 Aug 2012 19:55:00 -0600 
+                ** Fri, 07 Jun 24 23:15:00 +0000
                 */
                 int year = -1;
                 int month = -1;
@@ -87,7 +87,7 @@ public:
                 {
 
                     boost::posix_time::time_duration tzOffset(hoursOffset*hrsParseSign,minutesOffset,0);
-                    boost::gregorian::date reportedDate(year, month, day);
+                    boost::gregorian::date reportedDate(year + 2000, month, day);
                     boost::posix_time::ptime reportedTime(reportedDate, 
                         boost::posix_time::time_duration(hour, minute,seconds));
 

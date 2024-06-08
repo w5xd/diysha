@@ -5,7 +5,7 @@ package hvac::WeatherGov;
 
 use strict;
 require XML::Parser;
-require LWP::Simple;    # used to fetch the URL
+require LWP::UserAgent;    # used to fetch the URL
 
 our @ISA = qw(XML::Parser);
 
@@ -39,10 +39,13 @@ sub acquireTemperature {
     $self->{_wxgov_state} = \%wx; #reference it
     #use that %wx has in the callbacks as $self 
     #is a different object in the callbacks than now.
-
-    # list of XML tags we're looking for in order of nesting
-    my $sp_forecast = LWP::Simple::get( $self->{_url} );
-
+    my $ua = LWP::UserAgent->new;
+    my @get_headers = (
+		'User-Agent' => 'github.com/w5xd/diysha',
+ 		'Accept' => 'application/vnd.noaa.obs+xml'    );
+    my $sp_forecast;
+    my $response = $ua->get( $self->{_url}, @get_headers );
+    $sp_forecast = $response->decoded_content;
     if (defined($sp_forecast)) {
         #start calling (somebody) back...which is why we put pointer to our data into self
        eval {        $self->parse($sp_forecast); } ;
