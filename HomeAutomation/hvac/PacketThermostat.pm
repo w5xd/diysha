@@ -111,12 +111,12 @@ sub next_hvac_line {
                           . $i . "\n"
                           if $DEBUG;
                         if (
-                            defined($1)
-                            && (   ( $1 == $passthrough1 )
-                                || ( $1 == $passthrough2 ) )
+                            defined($i)
+                            && (   ( $i == $passthrough1 )
+                                || ( $i == $passthrough2 ) )
                           )
                         {
-                            $self->{_passthroughMode} = $1;
+                            $self->{_passthroughMode} = $i;
                         }
                         $self->{_fan_mode} =
                           $f_mode eq '1'
