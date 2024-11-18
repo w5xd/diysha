@@ -122,7 +122,7 @@ sub next_hvac_line {
                           : ( $f_mode eq '0' ? 0 : undef );
                         $self->{_read_from_tstat} = 1;
                         last;
-                    
+                    }
                 }
             }
         }
