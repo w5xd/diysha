@@ -1,4 +1,5 @@
-# perl class to call the various classes that can report outdoor temperature
+# perl class handling ghe packet thermostat for outdoor temperature
+# and 
 # HouseConfiguration.ini declares them in [SENSOR_MONITOR_STARTUP]
 
 package hvac::PacketThermostat;
@@ -103,18 +104,15 @@ sub next_hvac_line {
                 my $t_type = $vals[1];
                 my $t_mode = $vals[2];
                 my $f_mode = $vals[3];
-                my $i      = 0;
-                foreach (@MapGuiMode) {
-                    if ( $t_type == @{$_}[1] && $t_mode == @{$_}[2] ) {
+                foreach my $i (0..$MapGuiMode-1) {
+                    my @entry = @MapGuiMode[$i];
+                    if ( $t_type == $entry[1] && $t_mode == $entry[2] ) {
                         $self->{_thermostat_mode} = $i;
                         print STDERR "next_hvac_line set thermostat_mode="
                           . $i . "\n"
                           if $DEBUG;
-                        if (
-                            defined($i)
-                            && (   ( $i == $passthrough1 )
+                        if ( ( $i == $passthrough1 )
                                 || ( $i == $passthrough2 ) )
-                          )
                         {
                             $self->{_passthroughMode} = $i;
                         }
@@ -124,8 +122,7 @@ sub next_hvac_line {
                           : ( $f_mode eq '0' ? 0 : undef );
                         $self->{_read_from_tstat} = 1;
                         last;
-                    }
-                    $i += 1;
+                    
                 }
             }
         }
