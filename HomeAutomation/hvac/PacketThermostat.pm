@@ -1,5 +1,5 @@
 # perl class handling ghe packet thermostat for outdoor temperature
-# and 
+# and web
 # HouseConfiguration.ini declares them in [SENSOR_MONITOR_STARTUP]
 
 package hvac::PacketThermostat;
