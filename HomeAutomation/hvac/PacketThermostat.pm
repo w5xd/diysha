@@ -88,7 +88,7 @@ sub next_hvac_line {
     my $scolon = index( $line, " S:" );
     my $idxTgt = index( $line, " Tt:" );
     my @all    = split( " ", $line );
-    if ( ( scalar @all > 0 ) && $all[0] == $self->{_vars}->{FURNACE_NODEID} ) {
+    if ( ( scalar @all > 0 ) && ($all[0] == $self->{_vars}->{FURNACE_NODEID} )) {
         if ( $idxTgt >= 0 ) {
             my $sub    = substr( $line, $idxTgt + 4 );
             my @spl    = split( " ", $sub );
@@ -106,7 +106,7 @@ sub next_hvac_line {
                 my $f_mode = $vals[3];
                 foreach my $i (0..$MapGuiMode-1) {
                     my @entry = @MapGuiMode[$i];
-                    if ( $t_type == $entry[1] && $t_mode == $entry[2] ) {
+                    if (($t_type == $entry[1]) && ($t_mode == $entry[2])) {
                         $self->{_thermostat_mode} = $i;
                         print STDERR "next_hvac_line set thermostat_mode="
                           . $i . "\n"
