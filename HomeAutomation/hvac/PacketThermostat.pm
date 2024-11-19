@@ -58,9 +58,9 @@ sub getCmd {    # method to deal with outdoor temperature changes.
         elsif ( $temperatureF > $Temp ) {
             if ( $tstatMode == 1 ) {
                 $cmd =
-                  $cmdBase . ( $passthroughMode == $passthrough1 )
+                  $cmdBase . (( $passthroughMode == $passthrough1 )
                   ? "HVAC TYPE=0 MODE=0"
-                  : "HVAC TYPE=1 MODE=1";
+                  : "HVAC TYPE=1 MODE=1");
                 $self->{_thermostat_mode} = $passthroughMode;
             }
             elsif ( $tstatMode == 3 ) {
@@ -77,7 +77,7 @@ sub getCmd {    # method to deal with outdoor temperature changes.
             delete( $self->{_read_from_tstat} );
         }
     }
-
+    print STDERR "PT getcmd: \"" . $cmd . "\"\n" if $DEBUG;
     $cmd;
 }
 
@@ -104,8 +104,8 @@ sub next_hvac_line {
                 my $t_type = $vals[1];
                 my $t_mode = $vals[2];
                 my $f_mode = $vals[3];
-                foreach my $i (0..$MapGuiMode-1) {
-                    my @entry = @MapGuiMode[$i];
+                foreach my $i (0..scalar @MapGuiMode-1) {
+                    my @entry = @{$MapGuiMode[$i]};
                     if (($t_type == $entry[1]) && ($t_mode == $entry[2])) {
                         $self->{_thermostat_mode} = $i;
                         print STDERR "next_hvac_line set thermostat_mode="
