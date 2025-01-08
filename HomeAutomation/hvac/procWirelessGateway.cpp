@@ -35,8 +35,10 @@
 ** queue in the WirelessGateway.
 */
 static const size_t BUFSIZE = 1024;
-static void GetMessages(w5xdInsteon::PlmMonitorIO& modem, bool printUnprocessed );
+static void GetMessages(w5xdInsteon::PlmMonitorIO& modem, std::vector<std::string>& results);
+static void ProcessMessages(const std::vector<std::string>& results, bool printUnprocessed);
 static void DeleteFromGateway(w5xdInsteon::PlmMonitorIO& modem, unsigned oldestMessageId);
+static void RunTest(bool printUnprocessed);
 static std::string readResponse(w5xdInsteon::PlmMonitorIO& modem)
 {
     // a bit for modem to respond
@@ -111,6 +113,12 @@ int main(int argc, char* argv[])
     std::string comport;
     comport = argv[1];
 
+    if (comport == "TEST_MESSAGES")
+    {
+        RunTest(printUnprocessed);
+        return 0;
+    }
+
     w5xdInsteon::PlmMonitorIO modem(comport.c_str(), 9600);
     int r = modem.OpenCommPort();
     if (r != 0)
@@ -119,8 +127,13 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+
     if (doGet)
-        GetMessages(modem, printUnprocessed);
+    {
+        std::vector<std::string> results;
+        GetMessages(modem, results);
+        ProcessMessages(results, printUnprocessed);
+    }
     else if (doDelete)
         DeleteFromGateway(modem, oldestToDelete);
     else if (sendNodeId > 0)
@@ -183,14 +196,13 @@ static float CtoF(float c) { return 32.f + c * 9.0f / 5.0f; }
 *  are displayed on graphs, so that mistake cannot be corrected until/unless the work to deal with those
 *  old files is done.
 */
-static void GetMessages(w5xdInsteon::PlmMonitorIO& modem, bool printUnprocessed)
+static void GetMessages(w5xdInsteon::PlmMonitorIO& modem, std::vector<std::string>& results)
 {
     // send the command to the WirelessGateway
     static const char GETMESSAGES[] = "GetMessages\r";
     modem.Write((unsigned char*)GETMESSAGES, sizeof(GETMESSAGES) - 1);
 
     // read its answers until we go a time with no answer
-    std::vector<std::string> results;
     std::unique_ptr<unsigned char[]> buf(new unsigned char[BUFSIZE]);
     std::string partial;
     int j = 0;
@@ -215,6 +227,11 @@ static void GetMessages(w5xdInsteon::PlmMonitorIO& modem, bool printUnprocessed)
                 partial += c;
         }
     }
+
+}
+
+static void ProcessMessages(const std::vector<std::string> &results, bool printUnprocessed)
+{
 
     /* GetMessages responds like this:
 QueueBegin
@@ -442,10 +459,16 @@ QueueBytesFree 9
             case NODETEMPERATURE2:
             {
                 std::string tempCstr = line.substr(lineIdx);
-                if (!tempCstr.empty() && (tempCstr[0] == '-' || tempCstr[0] == '+'))
+                if (!tempCstr.empty())
                 {
-                    tempC = (float)(atof(tempCstr.c_str()));
-                    state = NODE_RH1;
+                    if (tempCstr[0] == ' ')
+                        tempCstr = tempCstr.substr(1);
+                    else if (!(tempCstr[0] == '-' || tempCstr[0] == '+' ))
+                        break;
+                    {
+                        tempC = (float)(atof(tempCstr.c_str()));
+                        state = NODE_RH1;
+                    }
                 }
             }
             break;
@@ -543,7 +566,7 @@ QueueBytesFree 9
                 std::cout << oss.str() << std::endl;
         }
         else if (printUnprocessed)
-		    std::cout << line << std::endl;
+            std::cout << line << std::endl;
     }
     if (foundEntryToDelete)
         std::cout << "Found delete: " << oldestMessageId << std::endl;
@@ -562,4 +585,26 @@ static void DeleteFromGateway(w5xdInsteon::PlmMonitorIO& modem, unsigned oldestM
     std::string response = readResponse(modem);
     if (!response.empty())
         std::cerr << "Modem" << response << std::endl;
+}
+
+
+void RunTest(bool printUnprocessed)
+{
+    std::vector<std::string> results;
+    results.push_back("QueueBegin");
+    results.push_back("Queue 53 148 REC -69 99 Ti:56.5 To:56.5 Ts:-28.8 2021-11-17T22:23:36");
+    results.push_back("Queue 54 35 REC -70 99 Ti:56.5 To:56.5 Ts:-28.8 2021-11-17T22:25:29");
+    results.push_back("Queue 55 5 REC -70 99 HVi=--------- HVo=--------- 2021-11-17T22:25:29");
+    results.push_back("Queue 56 5299 REC -59 3 C:44, B:263, T:+20.31");
+    results.push_back("Queue 57 5287 REC -28 4 C:22, B:282, T:+21.18");
+    results.push_back("Queue 58 5027 REC -59 3 C:45, B:264, T:+20.37");
+    results.push_back("Queue 59 4916 REC -28 4 C:23, B:282, T:+21.18");
+    results.push_back("Queue 60 4755 REC -58 3 C:46, B:264, T:+20.56");
+    results.push_back("Queue 61 3 REC -28 6 C:0, B:273, T:+26.18 R:58.27");
+    results.push_back("Queue 62 5028 REC -59 3 C:45, B:264, T:<20.37");
+    results.push_back("Queue 63 5029 REC -59 3 C:45, B:264, T: 00.0");
+    results.push_back("QueueEnd");
+    results.push_back("QueueBytesFree 9");
+    ProcessMessages(results, printUnprocessed);
+
 }
