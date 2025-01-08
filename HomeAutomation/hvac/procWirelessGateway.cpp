@@ -465,10 +465,8 @@ QueueBytesFree 9
                         tempCstr = tempCstr.substr(1);
                     else if (!(tempCstr[0] == '-' || tempCstr[0] == '+' ))
                         break;
-                    {
-                        tempC = (float)(atof(tempCstr.c_str()));
-                        state = NODE_RH1;
-                    }
+                    tempC = (float)(atof(tempCstr.c_str()));
+                    state = NODE_RH1;
                 }
             }
             break;
